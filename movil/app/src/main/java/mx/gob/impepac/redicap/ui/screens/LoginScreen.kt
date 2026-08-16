@@ -59,8 +59,9 @@ fun LoginScreen(container: AppContainer, onLoginExitoso: () -> Unit) {
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
         ) {
+            Spacer(Modifier.height(16.dp))
             Image(
                 painter = painterResource(R.drawable.logo_impepac),
                 contentDescription = "IMPEPAC Morelos",
@@ -68,7 +69,7 @@ fun LoginScreen(container: AppContainer, onLoginExitoso: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
             )
             OutlinedTextField(
                 value = username,
