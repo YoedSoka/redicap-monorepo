@@ -70,5 +70,13 @@ dependencies {
 
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
+    // Recorte automático del acta (detección de bordes + homografía, DFR R1).
+    implementation("org.opencv:opencv:5.0.0.1")
+
+    // Almacenamiento local cifrado (DFR R1: modo offline).
+    implementation("net.zetetic:sqlcipher-android:4.17.0")
+    implementation("androidx.sqlite:sqlite:2.7.0")
+    implementation("androidx.security:security-crypto:1.1.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

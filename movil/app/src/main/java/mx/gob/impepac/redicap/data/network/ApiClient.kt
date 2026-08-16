@@ -48,6 +48,16 @@ object ApiClient {
     }
 }
 
+/** Extrae el mensaje en español que ya manda el backend en el cuerpo de error de una HttpException. */
+fun extraerMensajeError(e: HttpException): String {
+    return try {
+        val body = e.response()?.errorBody()?.string()
+        body?.let { json.decodeFromString<ApiErrorBody>(it).message }
+    } catch (parseError: Exception) {
+        null
+    } ?: "Ocurrió un error inesperado (${e.code()})"
+}
+
 /** Traduce errores de red/HTTP al mensaje en español que ya manda el backend. */
 suspend fun <T> llamar(bloque: suspend () -> T): Result<T> {
     return try {
@@ -55,13 +65,7 @@ suspend fun <T> llamar(bloque: suspend () -> T): Result<T> {
     } catch (e: CancellationException) {
         throw e
     } catch (e: HttpException) {
-        val mensaje = try {
-            val body = e.response()?.errorBody()?.string()
-            body?.let { json.decodeFromString<ApiErrorBody>(it).message }
-        } catch (parseError: Exception) {
-            null
-        } ?: "Ocurrió un error inesperado (${e.code()})"
-        Result.failure(RuntimeException(mensaje))
+        Result.failure(RuntimeException(extraerMensajeError(e)))
     } catch (e: IOException) {
         Result.failure(RuntimeException("No se pudo conectar con el servidor. Revisa tu conexión."))
     } catch (e: Exception) {

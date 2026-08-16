@@ -16,10 +16,14 @@ import mx.gob.impepac.redicap.data.AppContainer
 import mx.gob.impepac.redicap.ui.screens.CapturaScreen
 import mx.gob.impepac.redicap.ui.screens.HomeScreen
 import mx.gob.impepac.redicap.ui.screens.LoginScreen
+import mx.gob.impepac.redicap.ui.screens.SeleccionCasillaScreen
 
 private const val RUTA_LOGIN = "login"
 private const val RUTA_HOME = "home"
+private const val RUTA_SELECCION = "seleccion/{casillaAsignadaId}"
 private const val RUTA_CAPTURA = "captura/{casillaId}"
+/** -1L marca "sin casilla asignada" en la ruta (NavType.LongType no admite null). */
+private const val SIN_ASIGNAR = -1L
 
 @Composable
 fun RedicapApp(container: AppContainer) {
@@ -53,12 +57,26 @@ fun RedicapApp(container: AppContainer) {
             composable(RUTA_HOME) {
                 HomeScreen(
                     container = container,
-                    onDigitalizar = { casillaId -> navController.navigate("captura/$casillaId") },
+                    onDigitalizar = { casillaAsignadaId ->
+                        navController.navigate("seleccion/${casillaAsignadaId ?: SIN_ASIGNAR}")
+                    },
                     onLogout = {
                         navController.navigate(RUTA_LOGIN) {
                             popUpTo(RUTA_HOME) { inclusive = true }
                         }
                     },
+                )
+            }
+            composable(
+                RUTA_SELECCION,
+                arguments = listOf(navArgument("casillaAsignadaId") { type = NavType.LongType }),
+            ) { backStackEntry ->
+                val casillaAsignadaId = backStackEntry.arguments?.getLong("casillaAsignadaId")?.takeIf { it != SIN_ASIGNAR }
+                SeleccionCasillaScreen(
+                    container = container,
+                    casillaAsignadaId = casillaAsignadaId,
+                    onCasillaElegida = { casillaId -> navController.navigate("captura/$casillaId") },
+                    onVolver = { navController.popBackStack() },
                 )
             }
             composable(

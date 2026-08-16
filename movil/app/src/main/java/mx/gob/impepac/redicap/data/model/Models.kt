@@ -32,6 +32,45 @@ data class ActaResponse(
     val rutaImagen: String? = null,
     val errorAritmetico: Boolean = false,
     val excedeListaNominal: Boolean = false,
+    val folio: String? = null,
+)
+
+@Serializable
+data class DistritoResponse(
+    val id: Long,
+    val clave: String,
+    val nombre: String,
+    val cabeceraDistrital: String? = null,
+)
+
+@Serializable
+data class MunicipioResponse(
+    val id: Long,
+    val clave: String,
+    val nombre: String,
+)
+
+@Serializable
+data class SeccionResponse(
+    val id: Long,
+    val numeroSeccion: Int,
+    val municipioId: Long,
+    val municipioNombre: String,
+    val distritoId: Long,
+    val distritoNombre: String,
+)
+
+@Serializable
+data class CasillaResponse(
+    val id: Long,
+    val seccionId: Long,
+    val numeroSeccion: Int,
+    val tipo: String,
+    val numeroCasilla: Int,
+    val listaNominal: Int,
+    val activa: Boolean,
+    val municipioNombre: String,
+    val distritoNombre: String,
 )
 
 @Serializable

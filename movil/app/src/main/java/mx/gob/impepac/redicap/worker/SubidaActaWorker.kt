@@ -4,22 +4,19 @@ import android.content.Context
 import androidx.work.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import mx.gob.impepac.redicap.data.AppContainer
+import mx.gob.impepac.redicap.data.local.ActaCompletada
 import mx.gob.impepac.redicap.data.local.ActaPendiente
 import mx.gob.impepac.redicap.data.local.EstadoCola
-import mx.gob.impepac.redicap.data.model.ApiErrorBody
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
+import mx.gob.impepac.redicap.data.local.SeguridadLocal
+import mx.gob.impepac.redicap.data.network.extraerMensajeError
+import mx.gob.impepac.redicap.data.network.subirActaBytes
 import retrofit2.HttpException
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 private const val TRABAJO_SUBIDA = "subida-actas-pendientes"
-private val json = Json { ignoreUnknownKeys = true }
 
 /**
  * Encola el procesamiento de la cola de subidas pendientes. Solo corre cuando hay red
@@ -73,15 +70,14 @@ class SubidaActaWorker(
     private suspend fun intentarSubir(container: AppContainer, pendiente: ActaPendiente, archivo: File): Boolean {
         val dao = container.database.actaPendienteDao()
         return try {
-            val casillaBody = pendiente.casillaId.toString().toRequestBody("text/plain".toMediaType())
-            val hashBody = pendiente.hashSha256.toRequestBody("text/plain".toMediaType())
-            val imagenPart = MultipartBody.Part.createFormData(
-                "imagen", archivo.name, archivo.asRequestBody("image/jpeg".toMediaType())
-            )
-            container.api.subirActa(casillaBody, hashBody, imagenPart)
+            val bytes = SeguridadLocal.leerCifrado(applicationContext, archivo)
+            val respuesta = subirActaBytes(container.api, pendiente.casillaId, pendiente.hashSha256, bytes, archivo.name)
 
             dao.eliminar(pendiente)
             archivo.delete()
+            container.database.actaCompletadaDao().insertar(
+                ActaCompletada(casillaId = pendiente.casillaId, folio = respuesta.folio ?: "—")
+            )
             true
         } catch (e: HttpException) {
             if (e.code() in 500..599) {
@@ -89,25 +85,15 @@ class SubidaActaWorker(
                 dao.registrarIntentoFallido(pendiente.id, "Error del servidor (${e.code()})")
                 false
             } else {
-                // Rechazo de negocio (hash no coincide, casilla no asignada, ya digitalizada, etc.):
+                // Rechazo de negocio (hash no coincide, casilla inactiva, ya digitalizada, etc.):
                 // reintentar no lo va a arreglar. Se marca para que el usuario decida.
-                val mensaje = mensajeDeError(e)
-                dao.marcarEstado(pendiente.id, EstadoCola.ERROR_PERMANENTE, mensaje)
+                dao.marcarEstado(pendiente.id, EstadoCola.ERROR_PERMANENTE, extraerMensajeError(e))
                 true
             }
         } catch (e: IOException) {
             // Sin conexión o se cortó la subida a medias: reintentar cuando vuelva la red.
             dao.registrarIntentoFallido(pendiente.id, "Sin conexión")
             false
-        }
-    }
-
-    private fun mensajeDeError(e: HttpException): String {
-        return try {
-            val body = e.response()?.errorBody()?.string()
-            body?.let { json.decodeFromString<ApiErrorBody>(it).message } ?: "Error ${e.code()}"
-        } catch (ex: Exception) {
-            "Error ${e.code()}"
         }
     }
 }
