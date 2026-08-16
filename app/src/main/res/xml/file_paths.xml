@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- files-path (no cache-path): las fotos deben sobrevivir hasta que se confirme la subida;
+         Android puede borrar la caché bajo presión de almacenamiento sin avisar. -->
+    <files-path name="actas" path="actas/" />
+</paths>
