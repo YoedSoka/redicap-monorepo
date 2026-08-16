@@ -1,0 +1,10 @@
+target/
+*.class
+
+# IDE / local tooling — never commit (workspace.xml stores local run-config env vars, incl. DB/JWT dev secrets)
+.idea/
+.claude/
+*.iml
+.vscode/
+
+.DS_Store
