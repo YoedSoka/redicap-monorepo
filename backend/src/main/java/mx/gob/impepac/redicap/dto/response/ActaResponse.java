@@ -13,6 +13,7 @@ public class ActaResponse {
     private String rutaImagen;
     private Boolean errorAritmetico;
     private Boolean excedeListaNominal;
+    private String folio;
 
     public static ActaResponse from(Acta a) {
         return ActaResponse.builder()
@@ -22,6 +23,7 @@ public class ActaResponse {
                 .rutaImagen(a.getRutaImagen())
                 .errorAritmetico(a.getErrorAritmetico())
                 .excedeListaNominal(a.getExcedeListaNominal())
+                .folio("RDCP-" + String.format("%08d", a.getId()))
                 .build();
     }
 }

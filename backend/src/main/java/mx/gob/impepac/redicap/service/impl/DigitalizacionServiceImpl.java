@@ -67,9 +67,8 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
         Usuario digitalizador = usuarioRepo.findById(digitalizadorId)
                 .orElseThrow(() -> RedicapException.notFound("Usuario", digitalizadorId));
 
-        if (digitalizador.getCasillaAsignada() == null
-                || !digitalizador.getCasillaAsignada().getId().equals(casillaId)) {
-            throw RedicapException.forbidden("La casilla no está asignada a este digitalizador");
+        if (!Boolean.TRUE.equals(casilla.getActiva())) {
+            throw RedicapException.badRequest("La casilla no está activa en el catálogo");
         }
         if (actaRepo.findByCasillaId(casillaId).isPresent()) {
             throw RedicapException.conflict("Esta casilla ya tiene un acta digitalizada");
