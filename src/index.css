@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/*
+ * Paleta institucional IMPEPAC Morelos.
+ * Extraída de dos fuentes reales (no inventada):
+ *  1. IMPEPAC_REDICAP_A_DFR.docx — colores de relleno usados en encabezados de tabla
+ *     a lo largo de todo el documento (#dc2597 x22, #60269e x5).
+ *  2. impepac.mx (sitio oficial) — gradiente de header y acentos: #d81b60 / #902488 / #9d2bb4 / #5a0656.
+ * Ambas fuentes coinciden: magenta/rosa como color primario, morado como secundario.
+ */
+@theme {
+  --color-impepac-magenta-50: #fdf1f7;
+  --color-impepac-magenta-100: #f2dcdb;
+  --color-impepac-magenta-300: #e85a9c;
+  --color-impepac-magenta-500: #dc2597;
+  --color-impepac-magenta-600: #d81b60;
+  --color-impepac-magenta-700: #b0134d;
+
+  --color-impepac-purple-50: #f6f0fb;
+  --color-impepac-purple-100: #e5dfec;
+  --color-impepac-purple-300: #b87fee;
+  --color-impepac-purple-500: #9d2bb4;
+  --color-impepac-purple-600: #902488;
+  --color-impepac-purple-700: #60269e;
+  --color-impepac-purple-900: #5a0656;
+
+  --color-impepac-ink: #334155;
+  --color-impepac-surface: #f8fafc;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background: var(--color-impepac-surface);
+  color: var(--color-impepac-ink);
+  font-family: var(--font-sans);
+}
