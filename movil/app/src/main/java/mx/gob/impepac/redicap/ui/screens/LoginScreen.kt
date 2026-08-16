@@ -1,5 +1,6 @@
 package mx.gob.impepac.redicap.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,12 +10,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import mx.gob.impepac.redicap.R
 import mx.gob.impepac.redicap.data.AppContainer
 import mx.gob.impepac.redicap.data.network.llamar
 import mx.gob.impepac.redicap.ui.theme.ImpepacPurple300
@@ -57,6 +61,15 @@ fun LoginScreen(container: AppContainer, onLoginExitoso: () -> Unit) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
         ) {
+            Image(
+                painter = painterResource(R.drawable.logo_impepac),
+                contentDescription = "IMPEPAC Morelos",
+                contentScale = ContentScale.FillWidth,
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 32.dp),
+            )
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
