@@ -3,35 +3,35 @@ import AppShell from '../components/AppShell'
 import EstadoBadge from '../components/EstadoBadge'
 import {
   extractErrorMessage,
+  listarPartidos,
   obtenerSiguienteActa,
   registrarCaptura,
   type ActaResponse,
+  type PartidoPoliticoResponse,
 } from '../lib/api'
 
-interface Fila {
-  clave: string
-  votos: string
-}
-
-const FILAS_INICIALES: Fila[] = [
-  { clave: '', votos: '' },
-  { clave: 'NULOS', votos: '' },
-  { clave: 'NO_REGISTRADOS', votos: '' },
-]
+const CLAVES_ESPECIALES = ['NULOS', 'NO_REGISTRADOS'] as const
 
 export default function CapturaPage() {
   const [acta, setActa] = useState<ActaResponse | null | undefined>(undefined)
-  const [filas, setFilas] = useState<Fila[]>(FILAS_INICIALES)
+  const [partidos, setPartidos] = useState<PartidoPoliticoResponse[]>([])
+  const [votos, setVotos] = useState<Record<string, string>>({})
   const [totalVotosActa, setTotalVotosActa] = useState('')
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
 
+  useEffect(() => {
+    listarPartidos()
+      .then((todos) => setPartidos(todos.filter((p) => p.activo)))
+      .catch((err) => setError(extractErrorMessage(err)))
+  }, [])
+
   const cargarSiguiente = async () => {
     setError(null)
     setMensaje(null)
     setActa(undefined)
-    setFilas(FILAS_INICIALES)
+    setVotos({})
     setTotalVotosActa('')
     try {
       const siguiente = await obtenerSiguienteActa()
@@ -46,27 +46,20 @@ export default function CapturaPage() {
     cargarSiguiente()
   }, [])
 
-  const actualizarFila = (i: number, campo: keyof Fila, valor: string) => {
-    setFilas((prev) => prev.map((f, idx) => (idx === i ? { ...f, [campo]: valor } : f)))
-  }
-
-  const agregarFila = () => setFilas((prev) => [...prev, { clave: '', votos: '' }])
-  const quitarFila = (i: number) => setFilas((prev) => prev.filter((_, idx) => idx !== i))
+  const claves = [...partidos.map((p) => p.siglas), ...CLAVES_ESPECIALES]
 
   const onSubmit = async () => {
     if (!acta) return
     setError(null)
     setCargando(true)
     try {
-      const votos: Record<string, number> = {}
-      for (const fila of filas) {
-        const clave = fila.clave.trim().toUpperCase()
-        if (!clave) continue
-        votos[clave] = Number(fila.votos) || 0
+      const votosNumericos: Record<string, number> = {}
+      for (const clave of claves) {
+        votosNumericos[clave] = Number(votos[clave]) || 0
       }
       const actualizada = await registrarCaptura(
         acta.id,
-        votos,
+        votosNumericos,
         totalVotosActa ? Number(totalVotosActa) : undefined,
       )
       setMensaje(`Captura guardada. El acta ${actualizada.id} pasó a ${actualizada.estado}.`)
@@ -116,43 +109,51 @@ export default function CapturaPage() {
             <EstadoBadge estado={acta.estado} />
           </div>
 
+          {partidos.length === 0 && (
+            <p className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              No hay partidos configurados todavía — pídele al administrador que los cargue en Gestión de
+              partidos. Por ahora solo puedes capturar nulos y no registrados.
+            </p>
+          )}
+
           <div className="space-y-3">
-            {filas.map((fila, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Partido / NULOS / NO_REGISTRADOS"
-                  value={fila.clave}
-                  onChange={(e) => actualizarFila(i, 'clave', e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
+            {partidos.map((p) => (
+              <div key={p.siglas} className="flex items-center gap-2">
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border border-slate-200"
+                  style={{ backgroundColor: p.colorHex ?? '#e2e8f0' }}
                 />
+                <span className="flex-1 text-sm font-medium text-impepac-ink">
+                  {p.siglas}
+                  <span className="ml-2 text-xs font-normal text-slate-400">{p.nombre}</span>
+                </span>
                 <input
                   type="number"
                   min={0}
                   placeholder="Votos"
-                  value={fila.votos}
-                  onChange={(e) => actualizarFila(i, 'votos', e.target.value)}
+                  value={votos[p.siglas] ?? ''}
+                  onChange={(e) => setVotos({ ...votos, [p.siglas]: e.target.value })}
                   className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
                 />
-                <button
-                  type="button"
-                  onClick={() => quitarFila(i)}
-                  className="px-2 text-slate-400 hover:text-impepac-magenta-600"
-                  aria-label="Quitar fila"
-                >
-                  ✕
-                </button>
               </div>
             ))}
-          </div>
 
-          <button
-            type="button"
-            onClick={agregarFila}
-            className="mt-3 text-sm font-medium text-impepac-purple-700 hover:underline"
-          >
-            + Agregar partido
-          </button>
+            <div className="border-t border-slate-100 pt-3">
+              {CLAVES_ESPECIALES.map((clave) => (
+                <div key={clave} className="mb-3 flex items-center gap-2 last:mb-0">
+                  <span className="flex-1 text-sm font-medium text-slate-500">{clave}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Votos"
+                    value={votos[clave] ?? ''}
+                    onChange={(e) => setVotos({ ...votos, [clave]: e.target.value })}
+                    className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-6">
             <label className="mb-1 block text-sm font-medium text-impepac-ink">

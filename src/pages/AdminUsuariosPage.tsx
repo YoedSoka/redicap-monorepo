@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import AppShell from '../components/AppShell'
+import AdminNav from '../components/AdminNav'
 import { NOMBRE_ROL, ROLES } from '../lib/roles'
 import {
   actualizarUsuario,
@@ -139,6 +140,8 @@ export default function AdminUsuariosPage() {
 
   return (
     <AppShell titulo="Gestión de usuarios" ancho="max-w-5xl">
+      <AdminNav />
+
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-impepac-ink">Usuarios ({usuarios.length})</h2>
         <button

@@ -5,6 +5,7 @@ import CapturaPage from './pages/CapturaPage'
 import DigitalizacionPage from './pages/DigitalizacionPage'
 import VerificacionPage from './pages/VerificacionPage'
 import AdminUsuariosPage from './pages/AdminUsuariosPage'
+import AdminPartidosPage from './pages/AdminPartidosPage'
 import ConsultaPage from './pages/ConsultaPage'
 import RutaProtegida from './components/RutaProtegida'
 
@@ -41,6 +42,14 @@ function App() {
         element={
           <RutaProtegida rolesPermitidos={['ADMINISTRADOR']}>
             <AdminUsuariosPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/admin/partidos"
+        element={
+          <RutaProtegida rolesPermitidos={['ADMINISTRADOR']}>
+            <AdminPartidosPage />
           </RutaProtegida>
         }
       />

@@ -83,6 +83,25 @@ export interface CasillaResponse {
   numeroCasilla: number
 }
 
+export interface PartidoPoliticoResponse {
+  id: number
+  siglas: string
+  nombre: string
+  colorHex: string | null
+  activo: boolean
+}
+
+export interface CrearPartidoRequest {
+  siglas: string
+  nombre: string
+  colorHex?: string
+}
+
+export interface ActualizarPartidoRequest {
+  nombre: string
+  colorHex?: string
+}
+
 export interface CorteResponse {
   id: number
   generadoAt: string
@@ -210,6 +229,28 @@ export async function cambiarActivoUsuario(id: number, activo: boolean): Promise
 
 export async function listarCasillas(): Promise<CasillaResponse[]> {
   const { data } = await api.get<CasillaResponse[]>('/casillas')
+  return data
+}
+
+// ── Partidos políticos ────────────────────────────────────────────────────
+
+export async function listarPartidos(): Promise<PartidoPoliticoResponse[]> {
+  const { data } = await api.get<PartidoPoliticoResponse[]>('/partidos')
+  return data
+}
+
+export async function crearPartido(request: CrearPartidoRequest): Promise<PartidoPoliticoResponse> {
+  const { data } = await api.post<PartidoPoliticoResponse>('/partidos', request)
+  return data
+}
+
+export async function actualizarPartido(id: number, request: ActualizarPartidoRequest): Promise<PartidoPoliticoResponse> {
+  const { data } = await api.put<PartidoPoliticoResponse>(`/partidos/${id}`, request)
+  return data
+}
+
+export async function cambiarActivoPartido(id: number, activo: boolean): Promise<PartidoPoliticoResponse> {
+  const { data } = await api.post<PartidoPoliticoResponse>(`/partidos/${id}/${activo ? 'activar' : 'desactivar'}`)
   return data
 }
 
