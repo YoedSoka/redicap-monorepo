@@ -10,6 +10,7 @@ import mx.gob.impepac.redicap.exception.RedicapException;
 import mx.gob.impepac.redicap.repository.LogAuditoriaRepository;
 import mx.gob.impepac.redicap.repository.UsuarioRepository;
 import mx.gob.impepac.redicap.security.jwt.JwtService;
+import mx.gob.impepac.redicap.security.jwt.SesionUnicaService;
 import mx.gob.impepac.redicap.security.jwt.TokenBlacklistService;
 import mx.gob.impepac.redicap.service.AuthService;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/** Login/logout con bloqueo por intentos fallidos (DFR R8) y bitácora de auditoría (DFR R9). */
+/**
+ * Login/logout con bloqueo por intentos fallidos, política de sesión única activa
+ * (DFR R8) y bitácora de auditoría (DFR R9).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -34,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final LoginIntentoRecorder loginIntentoRecorder;
     private final TokenBlacklistService tokenBlacklistService;
+    private final SesionUnicaService sesionUnicaService;
 
     @Value("${redicap.security.max-intentos-fallidos}")
     private int maxIntentosFallidos;
@@ -65,8 +70,11 @@ public class AuthServiceImpl implements AuthService {
         usuarioRepo.save(usuario);
         registrarAuditoria(usuario, ipOrigen, "LOGIN_EXITOSO");
 
+        String token = jwtService.generateToken(usuario);
+        sesionUnicaService.registrarNuevaSesion(usuario.getId(), token);
+
         return TokenResponse.builder()
-                .token(jwtService.generateToken(usuario))
+                .token(token)
                 .username(usuario.getUsername())
                 .rol(usuario.getRol().name())
                 .expiresInMs(jwtService.getExpirationMs())
@@ -77,7 +85,10 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String username, String ipOrigen, String token) {
         tokenBlacklistService.blacklist(token);
         usuarioRepo.findByUsername(username)
-                .ifPresent(usuario -> registrarAuditoria(usuario, ipOrigen, "LOGOUT"));
+                .ifPresent(usuario -> {
+                    sesionUnicaService.limpiarSesion(usuario.getId());
+                    registrarAuditoria(usuario, ipOrigen, "LOGOUT");
+                });
     }
 
     private void registrarAuditoria(Usuario usuario, String ipOrigen, String tipoAccion) {

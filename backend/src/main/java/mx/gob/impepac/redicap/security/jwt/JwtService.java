@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 /** Generación y validación de JWT. */
 @Service @Slf4j
@@ -27,6 +28,10 @@ public class JwtService {
 
     public String generateToken(Usuario usuario) {
         return Jwts.builder()
+                // jti: sin esto, dos logins del mismo usuario en el mismo segundo generan el
+                // mismo token (iat/exp truncan a segundos), y SesionUnicaService no podría
+                // distinguir la sesión nueva de la vieja para invalidarla (DFR R8).
+                .id(UUID.randomUUID().toString())
                 .subject(usuario.getUsername())
                 .claim("rol", usuario.getRol().name())
                 .claim("userId", usuario.getId())
