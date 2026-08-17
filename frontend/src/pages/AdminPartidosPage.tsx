@@ -107,7 +107,9 @@ export default function AdminPartidosPage() {
       <p className="mb-4 text-sm text-slate-500">
         Estos partidos son los que verán capturistas y verificadores al registrar votos. Confirma que la lista
         coincida con los partidos realmente registrados ante el IMPEPAC para el proceso electoral vigente antes
-        de usarla en producción — no vino precargada con una fuente oficial.
+        de usarla en producción — no vino precargada con una fuente oficial. No hay borrado permanente: si un
+        partido ya tiene votos capturados, "Desactivar" es la forma de sacarlo de la lista sin perder ese
+        historial.
       </p>
 
       {mensaje && (
@@ -182,7 +184,7 @@ export default function AdminPartidosPage() {
         </form>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
@@ -228,7 +230,11 @@ export default function AdminPartidosPage() {
                     <button
                       type="button"
                       onClick={() => onToggleActivo(p)}
-                      className="rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100"
+                      className={
+                        p.activo
+                          ? 'rounded-lg border border-impepac-magenta-100 px-2 py-1 font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50'
+                          : 'rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100'
+                      }
                     >
                       {p.activo ? 'Desactivar' : 'Activar'}
                     </button>

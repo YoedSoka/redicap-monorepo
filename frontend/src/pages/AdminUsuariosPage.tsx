@@ -142,6 +142,12 @@ export default function AdminUsuariosPage() {
     <AppShell titulo="Gestión de usuarios" ancho="max-w-5xl">
       <AdminNav />
 
+      <p className="mb-4 text-sm text-slate-500">
+        No hay borrado permanente de usuarios — capturaron actas y aparecen en la bitácora de auditoría, que
+        es append-only. "Desactivar" es la forma de quitarle acceso a alguien; puedes revertirlo con "Activar"
+        cuando haga falta.
+      </p>
+
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-impepac-ink">Usuarios ({usuarios.length})</h2>
         <button
@@ -268,7 +274,7 @@ export default function AdminUsuariosPage() {
         </form>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
@@ -317,7 +323,11 @@ export default function AdminUsuariosPage() {
                       <button
                         type="button"
                         onClick={() => onToggleActivo(u)}
-                        className="rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100"
+                        className={
+                          u.activo
+                            ? 'rounded-lg border border-impepac-magenta-100 px-2 py-1 font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50'
+                            : 'rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100'
+                        }
                       >
                         {u.activo ? 'Desactivar' : 'Activar'}
                       </button>

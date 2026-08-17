@@ -6,6 +6,10 @@ import {
   crearDistrito,
   crearMunicipio,
   crearSeccion,
+  eliminarCasilla,
+  eliminarDistrito,
+  eliminarMunicipio,
+  eliminarSeccion,
   extractErrorMessage,
   listarCasillas,
   listarDistritos,
@@ -48,6 +52,18 @@ export default function AdminCatalogoPage() {
   useEffect(() => {
     cargar()
   }, [])
+
+  const onEliminar = async (accion: () => Promise<void>, confirmacion: string) => {
+    if (!window.confirm(confirmacion)) return
+    setError(null)
+    setMensaje(null)
+    try {
+      await accion()
+      await cargar()
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    }
+  }
 
   // ── Distritos ─────────────────────────────────────────────────────────
   const [distritoFormAbierto, setDistritoFormAbierto] = useState(false)
@@ -145,8 +161,9 @@ export default function AdminCatalogoPage() {
 
       <p className="mb-4 text-sm text-slate-500">
         Distrito y Municipio son catálogos independientes; cada Sección une un número de sección con un
-        Municipio y un Distrito, y cada Casilla cuelga de una Sección. Aquí solo se puede dar de alta y
-        consultar — no hay edición ni baja para estos catálogos.
+        Municipio y un Distrito, y cada Casilla cuelga de una Sección. Un elemento solo se puede eliminar si
+        está vacío — sin secciones, sin casillas, o sin acta digitalizada según el caso — para no perder datos
+        electorales reales por accidente.
       </p>
 
       {mensaje && (
@@ -222,13 +239,14 @@ export default function AdminCatalogoPage() {
           </form>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Clave</th>
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Cabecera</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -237,6 +255,20 @@ export default function AdminCatalogoPage() {
                   <td className="px-4 py-3 font-medium text-impepac-ink">{d.clave}</td>
                   <td className="px-4 py-3 text-slate-600">{d.nombre}</td>
                   <td className="px-4 py-3 text-slate-600">{d.cabeceraDistrital ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onEliminar(
+                          () => eliminarDistrito(d.id),
+                          `¿Eliminar el distrito ${d.clave}? Esta acción no se puede deshacer.`,
+                        )
+                      }
+                      className="rounded-lg border border-impepac-magenta-100 px-2 py-1 text-xs font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -301,12 +333,13 @@ export default function AdminCatalogoPage() {
           </form>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Clave</th>
                 <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -314,6 +347,20 @@ export default function AdminCatalogoPage() {
                 <tr key={m.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-impepac-ink">{m.clave}</td>
                   <td className="px-4 py-3 text-slate-600">{m.nombre}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onEliminar(
+                          () => eliminarMunicipio(m.id),
+                          `¿Eliminar el municipio ${m.clave}? Esta acción no se puede deshacer.`,
+                        )
+                      }
+                      className="rounded-lg border border-impepac-magenta-100 px-2 py-1 text-xs font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -405,13 +452,14 @@ export default function AdminCatalogoPage() {
           </form>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Sección</th>
                 <th className="px-4 py-3">Municipio</th>
                 <th className="px-4 py-3">Distrito</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -420,6 +468,20 @@ export default function AdminCatalogoPage() {
                   <td className="px-4 py-3 font-medium text-impepac-ink">Sección {s.numeroSeccion}</td>
                   <td className="px-4 py-3 text-slate-600">{s.municipioNombre}</td>
                   <td className="px-4 py-3 text-slate-600">{s.distritoNombre}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onEliminar(
+                          () => eliminarSeccion(s.id),
+                          `¿Eliminar la Sección ${s.numeroSeccion}? Esta acción no se puede deshacer.`,
+                        )
+                      }
+                      className="rounded-lg border border-impepac-magenta-100 px-2 py-1 text-xs font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -520,7 +582,7 @@ export default function AdminCatalogoPage() {
           </form>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -529,6 +591,7 @@ export default function AdminCatalogoPage() {
                 <th className="px-4 py-3">Número</th>
                 <th className="px-4 py-3">Lista nominal</th>
                 <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -550,6 +613,20 @@ export default function AdminCatalogoPage() {
                     >
                       {c.activa ? 'Activa' : 'Inactiva'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onEliminar(
+                          () => eliminarCasilla(c.id),
+                          `¿Eliminar la casilla ${c.tipo} ${c.numeroCasilla} de la Sección ${c.numeroSeccion}? Esta acción no se puede deshacer.`,
+                        )
+                      }
+                      className="rounded-lg border border-impepac-magenta-100 px-2 py-1 text-xs font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50"
+                    >
+                      Eliminar
+                    </button>
                   </td>
                 </tr>
               ))}

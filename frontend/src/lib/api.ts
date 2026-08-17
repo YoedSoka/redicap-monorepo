@@ -297,6 +297,10 @@ export async function crearDistrito(request: CrearDistritoRequest): Promise<Dist
   return data
 }
 
+export async function eliminarDistrito(id: number): Promise<void> {
+  await api.delete(`/distritos/${id}`)
+}
+
 export async function listarMunicipios(): Promise<MunicipioResponse[]> {
   const { data } = await api.get<MunicipioResponse[]>('/municipios')
   return data
@@ -305,6 +309,10 @@ export async function listarMunicipios(): Promise<MunicipioResponse[]> {
 export async function crearMunicipio(request: CrearMunicipioRequest): Promise<MunicipioResponse> {
   const { data } = await api.post<MunicipioResponse>('/municipios', request)
   return data
+}
+
+export async function eliminarMunicipio(id: number): Promise<void> {
+  await api.delete(`/municipios/${id}`)
 }
 
 export async function listarSecciones(): Promise<SeccionResponse[]> {
@@ -317,9 +325,17 @@ export async function crearSeccion(request: CrearSeccionRequest): Promise<Seccio
   return data
 }
 
+export async function eliminarSeccion(id: number): Promise<void> {
+  await api.delete(`/secciones/${id}`)
+}
+
 export async function crearCasilla(request: CrearCasillaRequest): Promise<CasillaResponse> {
   const { data } = await api.post<CasillaResponse>('/casillas', request)
   return data
+}
+
+export async function eliminarCasilla(id: number): Promise<void> {
+  await api.delete(`/casillas/${id}`)
 }
 
 // ── Partidos políticos ────────────────────────────────────────────────────
