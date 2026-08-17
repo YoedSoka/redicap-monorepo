@@ -5,14 +5,21 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -152,8 +159,20 @@ fun CapturaScreen(
                     contentDescription = "Acta recortada",
                     modifier = Modifier.fillMaxSize(),
                 )
-                else -> OutlinedButton(onClick = { iniciarCaptura() }) {
-                    Text("Tomar foto del acta")
+                else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    GuiaFotografiaActa()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Recuerda: los 4 puntos negros de las esquinas deben salir completos en la foto.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(onClick = { iniciarCaptura() }) {
+                        Text("Tomar foto del acta")
+                    }
                 }
             }
         }
@@ -199,6 +218,47 @@ fun CapturaScreen(
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onVolver, modifier = Modifier.fillMaxWidth(), enabled = !guardando) {
             Text("Cancelar")
+        }
+    }
+}
+
+/**
+ * Boceto de una hoja de acta con un punto negro marcado en cada esquina — así se ve en el
+ * documento real y así debe verse en la foto. Se dibuja a mano (sin asset) porque es más
+ * fácil de mantener consistente con el resto de la UI que empacar un PNG.
+ */
+@Composable
+private fun GuiaFotografiaActa() {
+    Canvas(modifier = Modifier.size(150.dp, 190.dp)) {
+        val margen = 14.dp.toPx()
+        val radioPunto = 5.dp.toPx()
+        val ancho = size.width - margen * 2
+        val alto = size.height - margen * 2
+
+        drawRoundRect(
+            color = Color(0xFF94A3B8),
+            topLeft = Offset(margen, margen),
+            size = Size(ancho, alto),
+            cornerRadius = CornerRadius(8.dp.toPx()),
+            style = Stroke(width = 2.dp.toPx()),
+        )
+
+        listOf(0.28f, 0.40f, 0.52f, 0.64f).forEach { fraccionY ->
+            drawLine(
+                color = Color(0xFFCBD5E1),
+                start = Offset(margen + ancho * 0.18f, margen + alto * fraccionY),
+                end = Offset(margen + ancho * 0.82f, margen + alto * fraccionY),
+                strokeWidth = 3.dp.toPx(),
+            )
+        }
+
+        listOf(
+            Offset(margen, margen),
+            Offset(margen + ancho, margen),
+            Offset(margen, margen + alto),
+            Offset(margen + ancho, margen + alto),
+        ).forEach { esquina ->
+            drawCircle(color = Color.Black, radius = radioPunto, center = esquina)
         }
     }
 }
