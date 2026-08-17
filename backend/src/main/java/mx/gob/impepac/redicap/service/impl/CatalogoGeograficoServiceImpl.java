@@ -17,6 +17,7 @@ import mx.gob.impepac.redicap.dto.response.DistritoResponse;
 import mx.gob.impepac.redicap.dto.response.MunicipioResponse;
 import mx.gob.impepac.redicap.dto.response.SeccionResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
+import mx.gob.impepac.redicap.repository.ActaRepository;
 import mx.gob.impepac.redicap.repository.CasillaRepository;
 import mx.gob.impepac.redicap.repository.DistritoRepository;
 import mx.gob.impepac.redicap.repository.LogAuditoriaRepository;
@@ -41,6 +42,7 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
     private final MunicipioRepository municipioRepo;
     private final SeccionRepository seccionRepo;
     private final CasillaRepository casillaRepo;
+    private final ActaRepository actaRepo;
     private final UsuarioRepository usuarioRepo;
     private final LogAuditoriaRepository logRepo;
 
@@ -67,6 +69,18 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
     }
 
     @Override
+    public void eliminarDistrito(Long id, Long adminId) {
+        if (!distritoRepo.existsById(id)) {
+            throw RedicapException.notFound("Distrito", id);
+        }
+        if (seccionRepo.existsByDistritoId(id)) {
+            throw RedicapException.conflict("No se puede eliminar: hay secciones que pertenecen a este distrito");
+        }
+        distritoRepo.deleteById(id);
+        registrarAuditoria(adminId, "DISTRITO_ELIMINADO", "Distrito#" + id);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<MunicipioResponse> listarMunicipios() {
         return municipioRepo.findAll().stream().map(MunicipioResponse::from).toList();
@@ -85,6 +99,18 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
         municipioRepo.save(municipio);
         registrarAuditoria(adminId, "MUNICIPIO_CREADO", "Municipio#" + municipio.getId());
         return MunicipioResponse.from(municipio);
+    }
+
+    @Override
+    public void eliminarMunicipio(Long id, Long adminId) {
+        if (!municipioRepo.existsById(id)) {
+            throw RedicapException.notFound("Municipio", id);
+        }
+        if (seccionRepo.existsByMunicipioId(id)) {
+            throw RedicapException.conflict("No se puede eliminar: hay secciones que pertenecen a este municipio");
+        }
+        municipioRepo.deleteById(id);
+        registrarAuditoria(adminId, "MUNICIPIO_ELIMINADO", "Municipio#" + id);
     }
 
     @Override
@@ -122,6 +148,18 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
     }
 
     @Override
+    public void eliminarSeccion(Long id, Long adminId) {
+        if (!seccionRepo.existsById(id)) {
+            throw RedicapException.notFound("Seccion", id);
+        }
+        if (casillaRepo.existsBySeccionId(id)) {
+            throw RedicapException.conflict("No se puede eliminar: hay casillas que pertenecen a esta sección");
+        }
+        seccionRepo.deleteById(id);
+        registrarAuditoria(adminId, "SECCION_ELIMINADA", "Seccion#" + id);
+    }
+
+    @Override
     public CasillaResponse crearCasilla(CrearCasillaRequest request, Long adminId) {
         Seccion seccion = seccionRepo.findById(request.getSeccionId())
                 .orElseThrow(() -> RedicapException.notFound("Seccion", request.getSeccionId()));
@@ -141,6 +179,19 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
         registrarAuditoria(adminId, "CASILLA_CREADA", "Casilla#" + casilla.getId());
         log.info("Casilla {} creada por admin {}", casilla.getId(), adminId);
         return CasillaResponse.from(casilla);
+    }
+
+    @Override
+    public void eliminarCasilla(Long id, Long adminId) {
+        if (!casillaRepo.existsById(id)) {
+            throw RedicapException.notFound("Casilla", id);
+        }
+        if (actaRepo.findByCasillaId(id).isPresent()) {
+            throw RedicapException.conflict("No se puede eliminar: esta casilla ya tiene un acta digitalizada");
+        }
+        casillaRepo.deleteById(id);
+        registrarAuditoria(adminId, "CASILLA_ELIMINADA", "Casilla#" + id);
+        log.info("Casilla {} eliminada por admin {}", id, adminId);
     }
 
     private void registrarAuditoria(Long adminId, String tipoAccion, String entidadAfectada) {

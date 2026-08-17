@@ -39,4 +39,12 @@ public class MunicipioController {
         MunicipioResponse creado = catalogoService.crearMunicipio(request, principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
+
+    @Operation(summary = "Eliminar municipio (falla si tiene secciones asociadas)")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+        catalogoService.eliminarMunicipio(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
 }

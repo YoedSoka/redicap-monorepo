@@ -39,4 +39,12 @@ public class DistritoController {
         DistritoResponse creado = catalogoService.crearDistrito(request, principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
+
+    @Operation(summary = "Eliminar distrito (falla si tiene secciones asociadas)")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+        catalogoService.eliminarDistrito(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
 }

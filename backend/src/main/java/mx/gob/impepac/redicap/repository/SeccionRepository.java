@@ -9,4 +9,6 @@ public interface SeccionRepository extends JpaRepository<Seccion, Long> {
     boolean existsByNumeroSeccion(Integer numeroSeccion);
     List<Seccion> findByMunicipioId(Long municipioId);
     List<Seccion> findByDistritoId(Long distritoId);
+    boolean existsByMunicipioId(Long municipioId);
+    boolean existsByDistritoId(Long distritoId);
 }

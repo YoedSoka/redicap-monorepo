@@ -15,6 +15,8 @@ import mx.gob.impepac.redicap.dto.response.DistritoResponse;
 import mx.gob.impepac.redicap.dto.response.MunicipioResponse;
 import mx.gob.impepac.redicap.dto.response.SeccionResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
+import mx.gob.impepac.redicap.domain.entity.Acta;
+import mx.gob.impepac.redicap.repository.ActaRepository;
 import mx.gob.impepac.redicap.repository.CasillaRepository;
 import mx.gob.impepac.redicap.repository.DistritoRepository;
 import mx.gob.impepac.redicap.repository.LogAuditoriaRepository;
@@ -54,6 +56,7 @@ class CatalogoGeograficoServiceImplTest {
     @Mock private MunicipioRepository municipioRepo;
     @Mock private SeccionRepository seccionRepo;
     @Mock private CasillaRepository casillaRepo;
+    @Mock private ActaRepository actaRepo;
     @Mock private UsuarioRepository usuarioRepo;
     @Mock private LogAuditoriaRepository logRepo;
 
@@ -61,7 +64,7 @@ class CatalogoGeograficoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new CatalogoGeograficoServiceImpl(distritoRepo, municipioRepo, seccionRepo, casillaRepo, usuarioRepo, logRepo);
+        service = new CatalogoGeograficoServiceImpl(distritoRepo, municipioRepo, seccionRepo, casillaRepo, actaRepo, usuarioRepo, logRepo);
         lenient().when(usuarioRepo.findById(ADMIN_ID)).thenReturn(Optional.of(Usuario.builder().id(ADMIN_ID).username("admin").build()));
     }
 
@@ -88,6 +91,39 @@ class CatalogoGeograficoServiceImplTest {
         verify(distritoRepo, never()).save(any());
     }
 
+    @Test
+    void eliminarDistrito_sinSecciones_seElimina() {
+        when(distritoRepo.existsById(2L)).thenReturn(true);
+        when(seccionRepo.existsByDistritoId(2L)).thenReturn(false);
+
+        service.eliminarDistrito(2L, ADMIN_ID);
+
+        verify(distritoRepo).deleteById(2L);
+    }
+
+    @Test
+    void eliminarDistrito_conSecciones_lanzaConflictYNoElimina() {
+        when(distritoRepo.existsById(2L)).thenReturn(true);
+        when(seccionRepo.existsByDistritoId(2L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.eliminarDistrito(2L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(distritoRepo, never()).deleteById(any());
+    }
+
+    @Test
+    void eliminarDistrito_inexistente_lanzaNotFound() {
+        when(distritoRepo.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.eliminarDistrito(99L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     // ── Municipio ────────────────────────────────────────────────────────────
 
     @Test
@@ -109,6 +145,29 @@ class CatalogoGeograficoServiceImplTest {
                 .isEqualTo(HttpStatus.CONFLICT);
 
         verify(municipioRepo, never()).save(any());
+    }
+
+    @Test
+    void eliminarMunicipio_sinSecciones_seElimina() {
+        when(municipioRepo.existsById(1L)).thenReturn(true);
+        when(seccionRepo.existsByMunicipioId(1L)).thenReturn(false);
+
+        service.eliminarMunicipio(1L, ADMIN_ID);
+
+        verify(municipioRepo).deleteById(1L);
+    }
+
+    @Test
+    void eliminarMunicipio_conSecciones_lanzaConflictYNoElimina() {
+        when(municipioRepo.existsById(1L)).thenReturn(true);
+        when(seccionRepo.existsByMunicipioId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.eliminarMunicipio(1L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(municipioRepo, never()).deleteById(any());
     }
 
     // ── Sección ──────────────────────────────────────────────────────────────
@@ -191,6 +250,29 @@ class CatalogoGeograficoServiceImplTest {
         assertThat(resultado).hasSize(2);
     }
 
+    @Test
+    void eliminarSeccion_sinCasillas_seElimina() {
+        when(seccionRepo.existsById(1L)).thenReturn(true);
+        when(casillaRepo.existsBySeccionId(1L)).thenReturn(false);
+
+        service.eliminarSeccion(1L, ADMIN_ID);
+
+        verify(seccionRepo).deleteById(1L);
+    }
+
+    @Test
+    void eliminarSeccion_conCasillas_lanzaConflictYNoElimina() {
+        when(seccionRepo.existsById(1L)).thenReturn(true);
+        when(casillaRepo.existsBySeccionId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.eliminarSeccion(1L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(seccionRepo, never()).deleteById(any());
+    }
+
     // ── Casilla ──────────────────────────────────────────────────────────────
 
     @Test
@@ -230,6 +312,39 @@ class CatalogoGeograficoServiceImplTest {
         ArgumentCaptor<Casilla> captor = ArgumentCaptor.forClass(Casilla.class);
         verify(casillaRepo).save(captor.capture());
         assertThat(captor.getValue().getActiva()).isTrue();
+    }
+
+    @Test
+    void eliminarCasilla_sinActa_seElimina() {
+        when(casillaRepo.existsById(5L)).thenReturn(true);
+        when(actaRepo.findByCasillaId(5L)).thenReturn(Optional.empty());
+
+        service.eliminarCasilla(5L, ADMIN_ID);
+
+        verify(casillaRepo).deleteById(5L);
+    }
+
+    @Test
+    void eliminarCasilla_conActaDigitalizada_lanzaConflictYNoElimina() {
+        when(casillaRepo.existsById(5L)).thenReturn(true);
+        when(actaRepo.findByCasillaId(5L)).thenReturn(Optional.of(Acta.builder().id(10L).build()));
+
+        assertThatThrownBy(() -> service.eliminarCasilla(5L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        verify(casillaRepo, never()).deleteById(any());
+    }
+
+    @Test
+    void eliminarCasilla_inexistente_lanzaNotFound() {
+        when(casillaRepo.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.eliminarCasilla(99L, ADMIN_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────

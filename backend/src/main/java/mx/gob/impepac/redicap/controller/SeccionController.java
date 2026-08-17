@@ -41,4 +41,12 @@ public class SeccionController {
         SeccionResponse creada = catalogoService.crearSeccion(request, principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(creada);
     }
+
+    @Operation(summary = "Eliminar sección (falla si tiene casillas asociadas)")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+        catalogoService.eliminarSeccion(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
 }
