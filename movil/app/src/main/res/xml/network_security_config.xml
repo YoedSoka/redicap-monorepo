@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Solo el emulador (10.0.2.2 -> localhost de la máquina host) puede usar HTTP sin cifrar; producción debe ser HTTPS. -->
+<!-- Solo desarrollo local puede usar HTTP sin cifrar; producción debe ser HTTPS.
+     10.0.2.2 = localhost de la máquina host visto desde el emulador.
+     192.168.100.7 = IP LAN de la Mac de desarrollo, para probar desde un celular físico
+     en la misma red WiFi (ver redicapBaseUrl en app/build.gradle.kts). -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.0.2.2</domain>
         <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">192.168.100.7</domain>
     </domain-config>
 </network-security-config>

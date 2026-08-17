@@ -20,8 +20,11 @@ android {
 
     buildTypes {
         debug {
-            // Emulador Android: 10.0.2.2 apunta al localhost de la máquina host.
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/api/v1/\"")
+            // Emulador Android: 10.0.2.2 apunta al localhost de la máquina host. Para probar
+            // en un celular físico en la misma red, compilar con
+            // -PredicapBaseUrl=http://<ip-lan-de-tu-mac>:8080/api/v1/
+            val baseUrl = (project.findProperty("redicapBaseUrl") as String?) ?: "http://10.0.2.2:8080/api/v1/"
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         }
         release {
             isMinifyEnabled = false
