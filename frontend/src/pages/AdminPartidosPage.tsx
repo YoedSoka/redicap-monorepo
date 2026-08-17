@@ -194,7 +194,7 @@ export default function AdminPartidosPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {partidos.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.id} className="transition-colors hover:bg-slate-50">
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center gap-2 font-medium text-impepac-ink">
                     <span
@@ -217,18 +217,18 @@ export default function AdminPartidosPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3 text-xs">
+                  <div className="flex gap-2 text-xs">
                     <button
                       type="button"
                       onClick={() => abrirEditar(p)}
-                      className="font-medium text-impepac-purple-700 hover:underline"
+                      className="rounded-lg border border-impepac-purple-100 px-2 py-1 font-medium text-impepac-purple-700 transition-colors hover:bg-impepac-purple-50"
                     >
                       Editar
                     </button>
                     <button
                       type="button"
                       onClick={() => onToggleActivo(p)}
-                      className="font-medium text-slate-500 hover:underline"
+                      className="rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100"
                     >
                       {p.activo ? 'Desactivar' : 'Activar'}
                     </button>

@@ -283,39 +283,41 @@ export default function AdminUsuariosPage() {
             {usuarios.map((u) => {
               const bloqueado = !!u.bloqueadoHasta && new Date(u.bloqueadoHasta) > new Date()
               return (
-                <tr key={u.id}>
+                <tr key={u.id} className="transition-colors hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-impepac-ink">{u.username}</td>
                   <td className="px-4 py-3 text-slate-600">{u.nombreCompleto}</td>
                   <td className="px-4 py-3 text-slate-600">{NOMBRE_ROL[u.rol] ?? u.rol}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={
-                        u.activo
-                          ? 'rounded-full bg-impepac-purple-50 px-2 py-1 text-xs font-medium text-impepac-purple-700'
-                          : 'rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500'
-                      }
-                    >
-                      {u.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                    {bloqueado && (
-                      <span className="ml-2 rounded-full bg-impepac-magenta-50 px-2 py-1 text-xs font-medium text-impepac-magenta-700">
-                        Bloqueado
+                    <div className="flex flex-col items-start gap-1">
+                      <span
+                        className={
+                          u.activo
+                            ? 'rounded-full bg-impepac-purple-50 px-2 py-1 text-xs font-medium text-impepac-purple-700'
+                            : 'rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500'
+                        }
+                      >
+                        {u.activo ? 'Activo' : 'Inactivo'}
                       </span>
-                    )}
+                      {bloqueado && (
+                        <span className="rounded-full bg-impepac-magenta-50 px-2 py-1 text-xs font-medium text-impepac-magenta-700">
+                          Bloqueado
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-3 text-xs">
+                    <div className="flex gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => abrirEditar(u)}
-                        className="font-medium text-impepac-purple-700 hover:underline"
+                        className="rounded-lg border border-impepac-purple-100 px-2 py-1 font-medium text-impepac-purple-700 transition-colors hover:bg-impepac-purple-50"
                       >
                         Editar
                       </button>
                       <button
                         type="button"
                         onClick={() => onToggleActivo(u)}
-                        className="font-medium text-slate-500 hover:underline"
+                        className="rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-500 transition-colors hover:bg-slate-100"
                       >
                         {u.activo ? 'Desactivar' : 'Activar'}
                       </button>
@@ -323,7 +325,7 @@ export default function AdminUsuariosPage() {
                         <button
                           type="button"
                           onClick={() => onDesbloquear(u)}
-                          className="font-medium text-impepac-magenta-700 hover:underline"
+                          className="rounded-lg border border-impepac-magenta-100 px-2 py-1 font-medium text-impepac-magenta-700 transition-colors hover:bg-impepac-magenta-50"
                         >
                           Desbloquear
                         </button>
