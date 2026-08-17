@@ -14,12 +14,14 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import mx.gob.impepac.redicap.data.AppContainer
 import mx.gob.impepac.redicap.ui.screens.CapturaScreen
+import mx.gob.impepac.redicap.ui.screens.ColaEnviosScreen
 import mx.gob.impepac.redicap.ui.screens.HomeScreen
 import mx.gob.impepac.redicap.ui.screens.LoginScreen
 import mx.gob.impepac.redicap.ui.screens.SeleccionCasillaScreen
 
 private const val RUTA_LOGIN = "login"
 private const val RUTA_HOME = "home"
+private const val RUTA_COLA = "cola"
 private const val RUTA_SELECCION = "seleccion/{casillaAsignadaId}"
 private const val RUTA_CAPTURA = "captura/{casillaId}"
 /** -1L marca "sin casilla asignada" en la ruta (NavType.LongType no admite null). */
@@ -60,11 +62,18 @@ fun RedicapApp(container: AppContainer) {
                     onDigitalizar = { casillaAsignadaId ->
                         navController.navigate("seleccion/${casillaAsignadaId ?: SIN_ASIGNAR}")
                     },
+                    onVerCola = { navController.navigate(RUTA_COLA) },
                     onLogout = {
                         navController.navigate(RUTA_LOGIN) {
                             popUpTo(RUTA_HOME) { inclusive = true }
                         }
                     },
+                )
+            }
+            composable(RUTA_COLA) {
+                ColaEnviosScreen(
+                    container = container,
+                    onVolver = { navController.popBackStack() },
                 )
             }
             composable(

@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -17,7 +16,6 @@ import kotlinx.coroutines.launch
 import mx.gob.impepac.redicap.data.AppContainer
 import mx.gob.impepac.redicap.data.local.ActaCompletada
 import mx.gob.impepac.redicap.data.local.ActaPendiente
-import mx.gob.impepac.redicap.data.local.EstadoCola
 import mx.gob.impepac.redicap.data.model.UsuarioResponse
 import mx.gob.impepac.redicap.data.network.llamar
 import mx.gob.impepac.redicap.ui.theme.ImpepacMagenta50
@@ -25,16 +23,14 @@ import mx.gob.impepac.redicap.ui.theme.ImpepacMagenta600
 import mx.gob.impepac.redicap.ui.theme.ImpepacPurple300
 import mx.gob.impepac.redicap.ui.theme.ImpepacPurple500
 import mx.gob.impepac.redicap.ui.theme.ImpepacPurple900
-import mx.gob.impepac.redicap.worker.programarSubidaPendientes
-import java.io.File
 
 @Composable
 fun HomeScreen(
     container: AppContainer,
     onDigitalizar: (casillaAsignadaId: Long?) -> Unit,
+    onVerCola: () -> Unit,
     onLogout: () -> Unit,
 ) {
-    val context = LocalContext.current
     var perfil by remember { mutableStateOf<UsuarioResponse?>(null) }
     var casillaAsignadaEtiqueta by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -103,26 +99,11 @@ fun HomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            completadas.forEach { completada ->
-                TarjetaCompletada(
-                    completada = completada,
-                    onDescartar = {
-                        scope.launch { container.database.actaCompletadaDao().eliminar(completada) }
-                    },
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-
-            pendientes.forEach { pendiente ->
-                TarjetaPendiente(
-                    pendiente = pendiente,
-                    onReintentar = { programarSubidaPendientes(context) },
-                    onDescartar = {
-                        scope.launch {
-                            File(pendiente.rutaArchivo).delete()
-                            container.database.actaPendienteDao().eliminar(pendiente)
-                        }
-                    },
+            if (pendientes.isNotEmpty() || completadas.isNotEmpty()) {
+                ResumenColaEnvios(
+                    pendientes = pendientes.size,
+                    completadas = completadas.size,
+                    onVerCola = onVerCola,
                 )
                 Spacer(Modifier.height(16.dp))
             }
@@ -158,64 +139,30 @@ fun HomeScreen(
     }
 }
 
-private val VerdeExito = Color(0xFF15803D)
-private val VerdeExitoFondo = Color(0xFFF0FDF4)
-
+/** Resumen tocable: cuenta rápida de la cola, el detalle completo vive en ColaEnviosScreen. */
 @Composable
-private fun TarjetaCompletada(completada: ActaCompletada, onDescartar: () -> Unit) {
+private fun ResumenColaEnvios(pendientes: Int, completadas: Int, onVerCola: () -> Unit) {
+    val colorFondo = if (pendientes > 0) ImpepacMagenta50 else Color(0xFFF0FDF4)
+    val colorTexto = if (pendientes > 0) ImpepacMagenta600 else Color(0xFF15803D)
     Card(
-        colors = CardDefaults.cardColors(containerColor = VerdeExitoFondo),
+        colors = CardDefaults.cardColors(containerColor = colorFondo),
         modifier = Modifier.fillMaxWidth(),
+        onClick = onVerCola,
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                "✓ Acta de la casilla ${completada.casillaId} recibida",
-                fontWeight = FontWeight.SemiBold,
-                color = VerdeExito,
-                fontSize = 14.sp,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text("Folio: ${completada.folio}", fontSize = 13.sp, color = VerdeExito)
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onDescartar) { Text("Descartar") }
-        }
-    }
-}
-
-@Composable
-private fun TarjetaPendiente(
-    pendiente: ActaPendiente,
-    onReintentar: () -> Unit,
-    onDescartar: () -> Unit,
-) {
-    val esErrorPermanente = pendiente.estado == EstadoCola.ERROR_PERMANENTE
-    Card(
-        colors = CardDefaults.cardColors(containerColor = ImpepacMagenta50),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                if (esErrorPermanente) "No se pudo subir el acta de la casilla ${pendiente.casillaId}"
-                else "Acta de la casilla ${pendiente.casillaId} pendiente de subir",
-                fontWeight = FontWeight.SemiBold,
-                color = ImpepacMagenta600,
-                fontSize = 14.sp,
-            )
-            if (esErrorPermanente && pendiente.ultimoError != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(pendiente.ultimoError, fontSize = 13.sp, color = ImpepacMagenta600)
-            } else if (pendiente.intentos > 0) {
-                Spacer(Modifier.height(4.dp))
-                Text("Sin conexión · intento ${pendiente.intentos}", fontSize = 13.sp, color = ImpepacMagenta600)
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text("Cola de envíos", fontWeight = FontWeight.SemiBold, color = colorTexto, fontSize = 14.sp)
+                val resumen = buildList {
+                    if (pendientes > 0) add("$pendientes pendiente${if (pendientes == 1) "" else "s"}")
+                    if (completadas > 0) add("$completadas enviada${if (completadas == 1) "" else "s"}")
+                }.joinToString(" · ")
+                Text(resumen, color = colorTexto, fontSize = 13.sp)
             }
-            Spacer(Modifier.height(8.dp))
-            Row {
-                if (!esErrorPermanente) {
-                    TextButton(onClick = onReintentar) { Text("Reintentar ahora") }
-                    Spacer(Modifier.width(8.dp))
-                }
-                TextButton(onClick = onDescartar) { Text("Descartar") }
-            }
+            TextButton(onClick = onVerCola) { Text("Ver todo") }
         }
     }
 }
