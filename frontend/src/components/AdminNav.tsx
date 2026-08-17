@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 const enlaces = [
   { ruta: '/admin/usuarios', etiqueta: 'Usuarios' },
   { ruta: '/admin/partidos', etiqueta: 'Partidos' },
+  { ruta: '/admin/catalogo', etiqueta: 'Catálogo' },
 ]
 
 export default function AdminNav() {

@@ -76,11 +76,64 @@ export interface ActualizarUsuarioRequest {
   casillaAsignadaId?: number
 }
 
-export interface CasillaResponse {
+export type TipoCasilla = 'BASICA' | 'CONTIGUA' | 'ESPECIAL' | 'EXTRAORDINARIA'
+
+export interface DistritoResponse {
+  id: number
+  clave: string
+  nombre: string
+  cabeceraDistrital: string | null
+}
+
+export interface CrearDistritoRequest {
+  clave: string
+  nombre: string
+  cabeceraDistrital?: string
+}
+
+export interface MunicipioResponse {
+  id: number
+  clave: string
+  nombre: string
+}
+
+export interface CrearMunicipioRequest {
+  clave: string
+  nombre: string
+}
+
+export interface SeccionResponse {
   id: number
   numeroSeccion: number
-  tipo: string
+  municipioId: number
+  municipioNombre: string
+  distritoId: number
+  distritoNombre: string
+}
+
+export interface CrearSeccionRequest {
+  numeroSeccion: number
+  municipioId: number
+  distritoId: number
+}
+
+export interface CasillaResponse {
+  id: number
+  seccionId: number
+  numeroSeccion: number
+  tipo: TipoCasilla
   numeroCasilla: number
+  listaNominal: number
+  activa: boolean
+  municipioNombre: string
+  distritoNombre: string
+}
+
+export interface CrearCasillaRequest {
+  seccionId: number
+  tipo: TipoCasilla
+  numeroCasilla: number
+  listaNominal: number
 }
 
 export interface PartidoPoliticoResponse {
@@ -229,6 +282,43 @@ export async function cambiarActivoUsuario(id: number, activo: boolean): Promise
 
 export async function listarCasillas(): Promise<CasillaResponse[]> {
   const { data } = await api.get<CasillaResponse[]>('/casillas')
+  return data
+}
+
+// ── Catálogo geográfico (administración) ─────────────────────────────────
+
+export async function listarDistritos(): Promise<DistritoResponse[]> {
+  const { data } = await api.get<DistritoResponse[]>('/distritos')
+  return data
+}
+
+export async function crearDistrito(request: CrearDistritoRequest): Promise<DistritoResponse> {
+  const { data } = await api.post<DistritoResponse>('/distritos', request)
+  return data
+}
+
+export async function listarMunicipios(): Promise<MunicipioResponse[]> {
+  const { data } = await api.get<MunicipioResponse[]>('/municipios')
+  return data
+}
+
+export async function crearMunicipio(request: CrearMunicipioRequest): Promise<MunicipioResponse> {
+  const { data } = await api.post<MunicipioResponse>('/municipios', request)
+  return data
+}
+
+export async function listarSecciones(): Promise<SeccionResponse[]> {
+  const { data } = await api.get<SeccionResponse[]>('/secciones')
+  return data
+}
+
+export async function crearSeccion(request: CrearSeccionRequest): Promise<SeccionResponse> {
+  const { data } = await api.post<SeccionResponse>('/secciones', request)
+  return data
+}
+
+export async function crearCasilla(request: CrearCasillaRequest): Promise<CasillaResponse> {
+  const { data } = await api.post<CasillaResponse>('/casillas', request)
   return data
 }
 
