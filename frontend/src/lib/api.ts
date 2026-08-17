@@ -211,6 +211,12 @@ export async function registrarCaptura(
   return data
 }
 
+/** Devuelve una object URL con la imagen del acta; hay que revocarla (URL.revokeObjectURL) cuando ya no se use. */
+export async function obtenerImagenActaUrl(actaId: number): Promise<string> {
+  const { data } = await api.get(`/capturas/${actaId}/imagen`, { responseType: 'blob' })
+  return URL.createObjectURL(data)
+}
+
 // ── Digitalización ───────────────────────────────────────────────────────
 
 export async function calcularSha256(archivo: File): Promise<string> {

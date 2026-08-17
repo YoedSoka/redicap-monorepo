@@ -4,6 +4,7 @@ import EstadoBadge from '../components/EstadoBadge'
 import {
   extractErrorMessage,
   listarPartidos,
+  obtenerImagenActaUrl,
   obtenerSiguienteActa,
   registrarCaptura,
   type ActaResponse,
@@ -20,6 +21,8 @@ export default function CapturaPage() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [imagenUrl, setImagenUrl] = useState<string | null>(null)
+  const [imagenError, setImagenError] = useState(false)
 
   useEffect(() => {
     listarPartidos()
@@ -45,6 +48,33 @@ export default function CapturaPage() {
   useEffect(() => {
     cargarSiguiente()
   }, [])
+
+  // Trae la foto del acta actual como referencia visual; revoca la anterior para no fugar memoria.
+  useEffect(() => {
+    setImagenError(false)
+    if (!acta) {
+      setImagenUrl(null)
+      return
+    }
+    let cancelado = false
+    let url: string | null = null
+    obtenerImagenActaUrl(acta.id)
+      .then((u) => {
+        if (cancelado) {
+          URL.revokeObjectURL(u)
+          return
+        }
+        url = u
+        setImagenUrl(u)
+      })
+      .catch(() => {
+        if (!cancelado) setImagenError(true)
+      })
+    return () => {
+      cancelado = true
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [acta])
 
   const claves = [...partidos.map((p) => p.siglas), ...CLAVES_ESPECIALES]
 
@@ -72,7 +102,7 @@ export default function CapturaPage() {
   }
 
   return (
-    <AppShell titulo="Captura de actas">
+    <AppShell titulo="Captura de actas" ancho="max-w-6xl">
       {mensaje && (
         <p className="mb-4 rounded-lg bg-impepac-purple-50 px-4 py-3 text-sm text-impepac-purple-700">
           {mensaje}
@@ -100,7 +130,30 @@ export default function CapturaPage() {
       )}
 
       {acta && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
+            <p className="mb-3 text-sm font-medium text-slate-500">Fotografía del acta (referencia)</p>
+            <div className="flex min-h-[300px] items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+              {imagenError && (
+                <p className="px-4 text-center text-sm text-slate-400">
+                  No se pudo cargar la fotografía de esta acta.
+                </p>
+              )}
+              {!imagenError && !imagenUrl && (
+                <p className="text-sm text-slate-400">Cargando fotografía…</p>
+              )}
+              {!imagenError && imagenUrl && (
+                <img
+                  src={imagenUrl}
+                  alt={`Acta digitalizada de la casilla ${acta.casillaId}`}
+                  className="max-h-[75vh] w-full object-contain"
+                  onError={() => setImagenError(true)}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500">Acta #{acta.id}</p>
@@ -176,6 +229,7 @@ export default function CapturaPage() {
           >
             {cargando ? 'Guardando…' : 'Guardar captura'}
           </button>
+          </div>
         </div>
       )}
     </AppShell>
