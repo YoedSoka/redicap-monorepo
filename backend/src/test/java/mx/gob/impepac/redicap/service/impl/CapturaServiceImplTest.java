@@ -9,6 +9,7 @@ import mx.gob.impepac.redicap.domain.enums.EstadoActa;
 import mx.gob.impepac.redicap.domain.enums.RolUsuario;
 import mx.gob.impepac.redicap.dto.request.CapturaRequest;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
+import mx.gob.impepac.redicap.dto.response.ImagenActaResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
 import mx.gob.impepac.redicap.repository.ActaRepository;
 import mx.gob.impepac.redicap.repository.CapturaActaRepository;
@@ -17,10 +18,14 @@ import mx.gob.impepac.redicap.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,9 +60,13 @@ class CapturaServiceImplTest {
 
     private CapturaServiceImpl service;
 
+    @TempDir
+    Path tempDir;
+
     @BeforeEach
     void setUp() {
         service = new CapturaServiceImpl(actaRepo, capturaRepo, usuarioRepo, logRepo, new ObjectMapper());
+        ReflectionTestUtils.setField(service, "actasPath", tempDir.toString());
     }
 
     // ── Máquina de estados ──────────────────────────────────────────────────
@@ -274,6 +283,42 @@ class CapturaServiceImplTest {
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    // ── Imagen de referencia ─────────────────────────────────────────────────
+
+    @Test
+    void obtenerImagen_devuelveContenidoYContentTypeCorrectos() throws Exception {
+        byte[] bytesImagen = {1, 2, 3, 4};
+        Files.createDirectories(tempDir.resolve("100"));
+        Files.write(tempDir.resolve("100/foto.jpg"), bytesImagen);
+        when(actaRepo.findById(ACTA_ID)).thenReturn(Optional.of(
+                Acta.builder().id(ACTA_ID).rutaImagen("100/foto.jpg").build()));
+
+        ImagenActaResponse imagen = service.obtenerImagen(ACTA_ID);
+
+        assertThat(imagen.contenido()).isEqualTo(bytesImagen);
+        assertThat(imagen.contentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void obtenerImagen_actaSinImagen_lanzaNotFound() {
+        when(actaRepo.findById(ACTA_ID)).thenReturn(Optional.of(Acta.builder().id(ACTA_ID).rutaImagen(null).build()));
+
+        assertThatThrownBy(() -> service.obtenerImagen(ACTA_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void obtenerImagen_actaInexistente_lanzaNotFound() {
+        when(actaRepo.findById(ACTA_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtenerImagen(ACTA_ID))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────

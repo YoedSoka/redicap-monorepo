@@ -6,8 +6,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import mx.gob.impepac.redicap.dto.request.CapturaRequest;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
+import mx.gob.impepac.redicap.dto.response.ImagenActaResponse;
 import mx.gob.impepac.redicap.security.userdetails.UsuarioPrincipal;
 import mx.gob.impepac.redicap.service.CapturaService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,5 +38,15 @@ public class CapturaController {
             @Valid @RequestBody CapturaRequest request,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
         return ResponseEntity.ok(capturaService.registrarCaptura(actaId, principal.getId(), request));
+    }
+
+    @Operation(summary = "Imagen digitalizada del acta, como referencia visual al capturar")
+    @GetMapping("/{actaId}/imagen")
+    @PreAuthorize("hasAnyRole('CAPTURISTA','VERIFICADOR','ADMINISTRADOR','DIGITALIZADOR')")
+    public ResponseEntity<byte[]> obtenerImagen(@PathVariable Long actaId) {
+        ImagenActaResponse imagen = capturaService.obtenerImagen(actaId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(imagen.contentType()))
+                .body(imagen.contenido());
     }
 }

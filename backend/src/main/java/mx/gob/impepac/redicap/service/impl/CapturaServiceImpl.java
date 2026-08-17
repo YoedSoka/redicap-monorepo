@@ -7,12 +7,18 @@ import mx.gob.impepac.redicap.domain.entity.*;
 import mx.gob.impepac.redicap.domain.enums.EstadoActa;
 import mx.gob.impepac.redicap.dto.request.CapturaRequest;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
+import mx.gob.impepac.redicap.dto.response.ImagenActaResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
 import mx.gob.impepac.redicap.repository.*;
 import mx.gob.impepac.redicap.service.CapturaService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +41,14 @@ public class CapturaServiceImpl implements CapturaService {
     private final UsuarioRepository usuarioRepo;
     private final LogAuditoriaRepository logRepo;
     private final ObjectMapper objectMapper;
+
+    @Value("${redicap.storage.actas-path}")
+    private String actasPath;
+
+    private static final Map<String, String> CONTENT_TYPE_POR_EXTENSION = Map.of(
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "png", "image/png");
 
     @Override
     @Transactional(readOnly = true)
@@ -142,6 +156,27 @@ public class CapturaServiceImpl implements CapturaService {
             return objectMapper.writeValueAsString(votos);
         } catch (Exception e) {
             throw new RedicapException("Error serializando votos", org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ── Imagen de referencia ─────────────────────────────────────────────────
+    @Override
+    @Transactional(readOnly = true)
+    public ImagenActaResponse obtenerImagen(Long actaId) {
+        Acta acta = actaRepo.findById(actaId)
+                .orElseThrow(() -> RedicapException.notFound("Acta", actaId));
+        if (acta.getRutaImagen() == null) {
+            throw RedicapException.notFound("Imagen de acta", actaId);
+        }
+        try {
+            byte[] contenido = Files.readAllBytes(Path.of(actasPath, acta.getRutaImagen()));
+            String extension = acta.getRutaImagen()
+                    .substring(acta.getRutaImagen().lastIndexOf('.') + 1)
+                    .toLowerCase();
+            String contentType = CONTENT_TYPE_POR_EXTENSION.getOrDefault(extension, "application/octet-stream");
+            return new ImagenActaResponse(contenido, contentType);
+        } catch (IOException e) {
+            throw new RedicapException("No se pudo leer la imagen del acta", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
