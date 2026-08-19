@@ -20,14 +20,15 @@ object ApiClient {
     fun crear(tokenStore: TokenStore): ApiService {
         val authInterceptor = okhttp3.Interceptor { chain ->
             val token = tokenStore.tokenBlocking()
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
-            } else {
-                chain.request()
+            val builder = chain.request().newBuilder()
+                // ngrok antepone una página de advertencia al tráfico HTML de navegador en su
+                // plan gratuito. Este header la salta; fuera de ngrok cualquier otro servidor
+                // simplemente ignora un header que no conoce.
+                .addHeader("ngrok-skip-browser-warning", "1")
+            if (token != null) {
+                builder.addHeader("Authorization", "Bearer $token")
             }
-            chain.proceed(request)
+            chain.proceed(builder.build())
         }
 
         // Si una petición que sí llevaba token recibe 401, la sesión murió (invalidada por

@@ -28,8 +28,28 @@ android {
         }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "BASE_URL", "\"https://TODO-produccion.impepac.mx/api/v1/\"")
+            // La URL de producción entra por property al compilar, nunca clavada en el
+            // repositorio: el ambiente no es una decisión del código fuente. El placeholder
+            // aquí nunca debe llegar a un APK real — eso lo garantiza el check de abajo,
+            // no este valor. (No se puede throw directo en este bloque: buildTypes {} se
+            // configura siempre que Gradle toca este módulo, sea cual sea la tarea que
+            // pediste — un throw aquí tronaría hasta compileDebugKotlin.)
+            val baseUrl = (project.findProperty("redicapBaseUrl") as String?) ?: "https://SIN-CONFIGURAR/api/v1/"
+            buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         }
+    }
+
+    // La property solo es obligatoria al empaquetar release de verdad — se revisa en
+    // ejecución de la tarea assembleRelease/bundleRelease, no al configurar el proyecto.
+    afterEvaluate {
+        tasks.matching { it.name.contains("Release") && (it.name.startsWith("assemble") || it.name.startsWith("bundle")) }
+            .configureEach {
+                doFirst {
+                    check(project.hasProperty("redicapBaseUrl")) {
+                        "Falta -PredicapBaseUrl=<url> para compilar en release"
+                    }
+                }
+            }
     }
 
     compileOptions {

@@ -45,6 +45,9 @@ redicap:
   security:
     max-intentos-fallidos: 3
     bloqueo-minutos: 15
+    # Swagger/actuator: nunca expuestos por omisión (DFR R11). Encender solo en desarrollo
+    # local con -Dredicap.security.exponer-documentacion=true.
+    exponer-documentacion: false
   storage:
     actas-path: /opt/redicap/actas
   scheduler:
