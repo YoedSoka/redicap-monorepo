@@ -1,5 +1,6 @@
 package mx.gob.impepac.redicap.data.network
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import mx.gob.impepac.redicap.BuildConfig
 import mx.gob.impepac.redicap.data.model.ApiErrorBody
@@ -29,12 +30,27 @@ object ApiClient {
             chain.proceed(request)
         }
 
+        // Si una petición que sí llevaba token recibe 401, la sesión murió (invalidada por
+        // "sesión única" al entrar en otro dispositivo, o expiró). Sin esto el usuario se
+        // queda atorado viendo "Ocurrió un error inesperado (401)" con un token muerto.
+        // No dispara con el 401 de /auth/login (credenciales incorrectas), porque esa
+        // petición nunca lleva el header Authorization.
+        val sesionMuertaInterceptor = okhttp3.Interceptor { chain ->
+            val request = chain.request()
+            val response = chain.proceed(request)
+            if (response.code == 401 && request.header("Authorization") != null) {
+                runBlocking { tokenStore.notificarSesionInvalidada() }
+            }
+            response
+        }
+
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
         }
 
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(sesionMuertaInterceptor)
             .addInterceptor(logging)
             .build()
 

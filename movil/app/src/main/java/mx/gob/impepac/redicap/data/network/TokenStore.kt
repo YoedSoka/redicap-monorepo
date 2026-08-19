@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -21,6 +23,18 @@ class TokenStore(private val context: Context) {
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[keyToken] }
     val usernameFlow: Flow<String?> = context.dataStore.data.map { it[keyUsername] }
     val rolFlow: Flow<String?> = context.dataStore.data.map { it[keyRol] }
+
+    /** Emite cuando el interceptor detecta una sesión muerta (token invalidado por sesión
+     * única en otro dispositivo, o expirado). buffer=1 para no perder el evento si la UI
+     * todavía no está observando cuando ocurre. */
+    private val _sesionInvalidada = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val sesionInvalidada: SharedFlow<Unit> = _sesionInvalidada
+
+    /** Llamado solo por el interceptor de red al recibir 401 en una petición autenticada. */
+    suspend fun notificarSesionInvalidada() {
+        limpiarSesion()
+        _sesionInvalidada.emit(Unit)
+    }
 
     suspend fun guardarSesion(token: String, username: String, rol: String) {
         context.dataStore.edit {
