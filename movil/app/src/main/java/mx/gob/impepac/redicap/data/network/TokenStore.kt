@@ -30,10 +30,17 @@ class TokenStore(private val context: Context) {
     private val _sesionInvalidada = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val sesionInvalidada: SharedFlow<Unit> = _sesionInvalidada
 
-    /** Llamado solo por el interceptor de red al recibir 401 en una petición autenticada. */
+    /**
+     * Llamado solo por el interceptor de red al recibir 401 en una petición autenticada,
+     * desde dentro de un runBlocking en el hilo del dispatcher de OkHttp. tryEmit (no emit)
+     * a propósito: con extraBufferCapacity=1 y sin collector activo (app en background, o el
+     * worker corriendo sin UI), un segundo evento antes de que alguien lea el primero
+     * suspendería para siempre y colgaría ese hilo de OkHttp. Perder un duplicado no importa,
+     * el primero ya basta para mandar a login.
+     */
     suspend fun notificarSesionInvalidada() {
         limpiarSesion()
-        _sesionInvalidada.emit(Unit)
+        _sesionInvalidada.tryEmit(Unit)
     }
 
     suspend fun guardarSesion(token: String, username: String, rol: String) {

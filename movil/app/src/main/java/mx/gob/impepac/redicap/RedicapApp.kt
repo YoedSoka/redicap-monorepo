@@ -49,7 +49,11 @@ fun RedicapApp(container: AppContainer) {
     LaunchedEffect(Unit) {
         container.tokenStore.sesionInvalidada.collect {
             scope.launch {
-                snackbarHostState.showSnackbar("Tu sesión terminó: se inició sesión en otro dispositivo.")
+                // Neutral a propósito: el mismo 401 se dispara tanto por sesión única
+                // invalidada en otro dispositivo como por expiración normal a las 8h. Decirle
+                // a un CAE que "alguien más entró" cuando en realidad solo expiró puede
+                // generar un reporte de incidente innecesario en plena jornada electoral.
+                snackbarHostState.showSnackbar("Tu sesión terminó. Vuelve a iniciar sesión.")
             }
             navController.navigate(RUTA_LOGIN) {
                 popUpTo(0) { inclusive = true }

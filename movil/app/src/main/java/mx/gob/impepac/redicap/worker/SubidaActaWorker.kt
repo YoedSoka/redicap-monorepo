@@ -82,9 +82,12 @@ class SubidaActaWorker(
             )
             true
         } catch (e: HttpException) {
-            if (e.code() in 500..599) {
-                // Falla del servidor: vale la pena reintentar.
-                dao.registrarIntentoFallido(pendiente.id, "Error del servidor (${e.code()})")
+            if (e.code() in 500..599 || e.code() == 401) {
+                // Servidor caído o sesión vencida (JWT expira a las 8h, una jornada dura más):
+                // ambos se arreglan solos, uno cuando el servidor vuelve, el otro cuando el
+                // usuario vuelve a entrar — el interceptor de red ya lo mandó a login.
+                val motivo = if (e.code() == 401) "Sesión vencida" else "Error del servidor (${e.code()})"
+                dao.registrarIntentoFallido(pendiente.id, motivo)
                 false
             } else {
                 // Rechazo de negocio (hash no coincide, casilla inactiva, ya digitalizada, etc.):

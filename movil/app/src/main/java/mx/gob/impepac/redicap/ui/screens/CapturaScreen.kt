@@ -115,7 +115,11 @@ fun CapturaScreen(
                     )
                     onListo("Acta recibida. Folio ${respuesta.folio ?: "sin folio"}.")
                 } catch (e: HttpException) {
-                    if (e.code() in 500..599) {
+                    if (e.code() in 500..599 || e.code() == 401) {
+                        // Servidor caído o sesión vencida justo al enviar: en ambos casos el
+                        // interceptor de red puede mandar al usuario a login antes de que
+                        // alcance a leer un error en pantalla — no hay que perder el acta
+                        // cifrada ya en disco por eso, se encola igual que sin conexión.
                         encolarParaReintento(container, context, casillaId, tipoEleccion, archivoCifrado.absolutePath, hash)
                         onListo("El servidor no respondió. El acta quedó guardada y se reintentará sola.")
                     } else {

@@ -105,7 +105,12 @@ fun ColaEnviosScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
                         )
-                        TextButton(onClick = { programarSubidaPendientes(context) }) {
+                        TextButton(onClick = {
+                            scope.launch {
+                                container.database.actaPendienteDao().marcarTodosPendientes()
+                                programarSubidaPendientes(context)
+                            }
+                        }) {
                             Text("Reintentar todas")
                         }
                     }
@@ -113,7 +118,14 @@ fun ColaEnviosScreen(
                 items(pendientes, key = { it.id }) { pendiente ->
                     TarjetaPendiente(
                         pendiente = pendiente,
-                        onReintentar = { programarSubidaPendientes(context) },
+                        onReintentar = {
+                            scope.launch {
+                                if (pendiente.estado == EstadoCola.ERROR_PERMANENTE) {
+                                    container.database.actaPendienteDao().marcarPendiente(pendiente.id)
+                                }
+                                programarSubidaPendientes(context)
+                            }
+                        },
                         onDescartar = {
                             scope.launch {
                                 File(pendiente.rutaArchivo).delete()
@@ -207,10 +219,10 @@ internal fun TarjetaPendiente(
             }
             Spacer(Modifier.height(8.dp))
             Row {
-                if (!esErrorPermanente) {
-                    TextButton(onClick = onReintentar) { Text("Reintentar ahora") }
-                    Spacer(Modifier.width(8.dp))
-                }
+                // Un reintento fallido no cuesta nada; un acta perdida sí. Se deja visible
+                // incluso en ERROR_PERMANENTE — el archivo cifrado sigue íntegro en disco.
+                TextButton(onClick = onReintentar) { Text("Reintentar ahora") }
+                Spacer(Modifier.width(8.dp))
                 TextButton(onClick = onDescartar) { Text("Descartar") }
             }
         }
