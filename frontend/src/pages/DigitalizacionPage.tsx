@@ -1,10 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import AppShell from '../components/AppShell'
 import EstadoBadge from '../components/EstadoBadge'
-import { extractErrorMessage, subirActaDigitalizada, type ActaResponse } from '../lib/api'
+import {
+  ELECCIONES,
+  ETIQUETAS_ELECCION,
+  extractErrorMessage,
+  subirActaDigitalizada,
+  type ActaResponse,
+  type TipoEleccion,
+} from '../lib/api'
 
 export default function DigitalizacionPage() {
   const [casillaId, setCasillaId] = useState('')
+  const [tipoEleccion, setTipoEleccion] = useState<TipoEleccion>('GUBERNATURA')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +28,7 @@ export default function DigitalizacionPage() {
     setResultado(null)
     setCargando(true)
     try {
-      const acta = await subirActaDigitalizada(Number(casillaId), archivo)
+      const acta = await subirActaDigitalizada(Number(casillaId), tipoEleccion, archivo)
       setResultado(acta)
       setCasillaId('')
       setArchivo(null)
@@ -47,6 +55,27 @@ export default function DigitalizacionPage() {
               onChange={(e) => setCasillaId(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
             />
+          </div>
+
+          <div>
+            <label htmlFor="tipoEleccion" className="mb-1 block text-sm font-medium text-impepac-ink">
+              Elección
+            </label>
+            <select
+              id="tipoEleccion"
+              value={tipoEleccion}
+              onChange={(e) => setTipoEleccion(e.target.value as TipoEleccion)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
+            >
+              {ELECCIONES.map((e) => (
+                <option key={e} value={e}>
+                  {ETIQUETAS_ELECCION[e]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Cada casilla produce un acta independiente por cada elección.
+            </p>
           </div>
 
           <div>

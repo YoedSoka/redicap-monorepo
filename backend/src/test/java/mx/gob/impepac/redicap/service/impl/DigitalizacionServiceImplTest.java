@@ -4,6 +4,8 @@ import mx.gob.impepac.redicap.domain.entity.Acta;
 import mx.gob.impepac.redicap.domain.entity.Casilla;
 import mx.gob.impepac.redicap.domain.entity.LogAuditoria;
 import mx.gob.impepac.redicap.domain.entity.Usuario;
+import mx.gob.impepac.redicap.domain.enums.TipoCasilla;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
 import mx.gob.impepac.redicap.repository.ActaRepository;
@@ -80,7 +82,7 @@ class DigitalizacionServiceImplTest {
     void imagenVacia_lanzaBadRequest() {
         MockMultipartFile vacia = new MockMultipartFile("imagen", "acta.jpg", "image/jpeg", new byte[0]);
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, vacia, "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, vacia, "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -92,7 +94,7 @@ class DigitalizacionServiceImplTest {
     void tipoNoSoportado_lanzaBadRequest() {
         MockMultipartFile pdf = new MockMultipartFile("imagen", "acta.pdf", "application/pdf", new byte[]{1, 2, 3});
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, pdf, "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, pdf, "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -102,7 +104,7 @@ class DigitalizacionServiceImplTest {
     void casillaInexistente_lanzaNotFound() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagenValida(), "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagenValida(), "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -113,7 +115,7 @@ class DigitalizacionServiceImplTest {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
         when(usuarioRepo.findById(DIGITALIZADOR_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagenValida(), "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagenValida(), "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -126,10 +128,10 @@ class DigitalizacionServiceImplTest {
         // Antes de esta sesión esto lanzaba FORBIDDEN si la casilla no era la asignada al
         // digitalizador; ahora cualquier digitalizador puede subir a cualquier casilla activa.
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
-        when(actaRepo.findByCasillaId(CASILLA_ID)).thenReturn(Optional.empty());
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.empty());
         MockMultipartFile imagen = imagenValida();
 
-        ActaResponse response = service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagen, hashDe(imagen));
+        ActaResponse response = service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagen, hashDe(imagen));
 
         assertThat(response.getCasillaId()).isEqualTo(CASILLA_ID);
         verify(actaRepo).save(any());
@@ -139,7 +141,7 @@ class DigitalizacionServiceImplTest {
     void casillaInactiva_lanzaBadRequest() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(false)));
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagenValida(), "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagenValida(), "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -152,9 +154,9 @@ class DigitalizacionServiceImplTest {
     @Test
     void casillaYaTieneActa_lanzaConflict() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
-        when(actaRepo.findByCasillaId(CASILLA_ID)).thenReturn(Optional.of(Acta.builder().id(1L).build()));
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.of(Acta.builder().id(1L).build()));
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagenValida(), "hash"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagenValida(), "hash"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -163,11 +165,36 @@ class DigitalizacionServiceImplTest {
     }
 
     @Test
+    void casillaEspecialParaAyuntamiento_lanzaBadRequest() {
+        // Las casillas ESPECIAL solo reciben votos de Gubernatura y Diputación (DFR R5).
+        when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casillaEspecial()));
+
+        assertThatThrownBy(() -> service.recibirActa(
+                CASILLA_ID, TipoEleccion.AYUNTAMIENTO, DIGITALIZADOR_ID, imagenValida(), "hash"))
+                .isInstanceOf(RedicapException.class)
+                .extracting(e -> ((RedicapException) e).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        verify(actaRepo, never()).save(any());
+    }
+
+    @Test
+    void casillaEspecialParaGubernatura_seAcepta() {
+        when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casillaEspecial()));
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.empty());
+        MockMultipartFile imagen = imagenValida();
+
+        ActaResponse response = service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagen, hashDe(imagen));
+
+        assertThat(response.getTipoEleccion()).isEqualTo(TipoEleccion.GUBERNATURA);
+    }
+
+    @Test
     void hashNoCoincideConElContenido_lanzaBadRequest() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
-        when(actaRepo.findByCasillaId(CASILLA_ID)).thenReturn(Optional.empty());
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagenValida(), "hash-incorrecto"))
+        assertThatThrownBy(() -> service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagenValida(), "hash-incorrecto"))
                 .isInstanceOf(RedicapException.class)
                 .extracting(e -> ((RedicapException) e).getStatus())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -180,7 +207,7 @@ class DigitalizacionServiceImplTest {
     @Test
     void exito_almacenaElArchivoYGeneraFolioConElIdDelActa() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
-        when(actaRepo.findByCasillaId(CASILLA_ID)).thenReturn(Optional.empty());
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.empty());
         when(actaRepo.save(any())).thenAnswer(inv -> {
             Acta a = inv.getArgument(0);
             a.setId(123L);
@@ -188,7 +215,7 @@ class DigitalizacionServiceImplTest {
         });
         MockMultipartFile imagen = imagenValida();
 
-        ActaResponse response = service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagen, hashDe(imagen));
+        ActaResponse response = service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagen, hashDe(imagen));
 
         assertThat(response.getFolio()).isEqualTo("RDCP-00000123");
 
@@ -202,10 +229,10 @@ class DigitalizacionServiceImplTest {
     @Test
     void exito_registraAuditoriaDeDigitalizacion() {
         when(casillaRepo.findById(CASILLA_ID)).thenReturn(Optional.of(casilla(true)));
-        when(actaRepo.findByCasillaId(CASILLA_ID)).thenReturn(Optional.empty());
+        when(actaRepo.findByCasillaIdAndTipoEleccion(CASILLA_ID, TipoEleccion.GUBERNATURA)).thenReturn(Optional.empty());
         MockMultipartFile imagen = imagenValida();
 
-        service.recibirActa(CASILLA_ID, DIGITALIZADOR_ID, imagen, hashDe(imagen));
+        service.recibirActa(CASILLA_ID, TipoEleccion.GUBERNATURA, DIGITALIZADOR_ID, imagen, hashDe(imagen));
 
         ArgumentCaptor<LogAuditoria> captor = ArgumentCaptor.forClass(LogAuditoria.class);
         verify(logRepo).save(captor.capture());
@@ -217,6 +244,10 @@ class DigitalizacionServiceImplTest {
 
     private Casilla casilla(boolean activa) {
         return Casilla.builder().id(CASILLA_ID).activa(activa).build();
+    }
+
+    private Casilla casillaEspecial() {
+        return Casilla.builder().id(CASILLA_ID).activa(true).tipo(TipoCasilla.ESPECIAL).build();
     }
 
     private MockMultipartFile imagenValida() {

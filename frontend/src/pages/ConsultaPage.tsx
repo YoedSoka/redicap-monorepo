@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import AppShell from '../components/AppShell'
 import {
+  ELECCIONES,
+  ETIQUETAS_ELECCION,
   extractErrorMessage,
   listarPartidos,
   obtenerHistorialCortes,
   obtenerUltimoCorte,
   type CorteResponse,
   type PartidoPoliticoResponse,
+  type TipoEleccion,
 } from '../lib/api'
 
 const COLOR_DEFECTO = '#d81b60'
@@ -25,29 +28,38 @@ function formatearFecha(iso: string): string {
 }
 
 export default function ConsultaPage() {
+  const [eleccion, setEleccion] = useState<TipoEleccion>('GUBERNATURA')
   const [ultimo, setUltimo] = useState<CorteResponse | null | undefined>(undefined)
   const [historial, setHistorial] = useState<CorteResponse[]>([])
   const [partidos, setPartidos] = useState<Map<string, PartidoPoliticoResponse>>(new Map())
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelado = false
     const cargar = async () => {
+      setUltimo(undefined)
+      setError(null)
       try {
         const [u, h, p] = await Promise.all([
-          obtenerUltimoCorte(),
-          obtenerHistorialCortes(),
+          obtenerUltimoCorte(eleccion),
+          obtenerHistorialCortes(eleccion),
           listarPartidos(),
         ])
+        if (cancelado) return
         setUltimo(u)
         setHistorial(h)
         setPartidos(new Map(p.map((partido) => [partido.siglas, partido])))
       } catch (err) {
+        if (cancelado) return
         setError(extractErrorMessage(err))
         setUltimo(null)
       }
     }
     cargar()
-  }, [])
+    return () => {
+      cancelado = true
+    }
+  }, [eleccion])
 
   const totalVotos = ultimo ? Object.values(ultimo.resultados).reduce((a, b) => a + b, 0) : 0
   const resultadosOrdenados = ultimo
@@ -56,6 +68,23 @@ export default function ConsultaPage() {
 
   return (
     <AppShell titulo="Consulta de resultados" ancho="max-w-4xl">
+      <div className="mb-6 flex gap-2 rounded-xl bg-slate-100 p-1">
+        {ELECCIONES.map((e) => (
+          <button
+            key={e}
+            type="button"
+            onClick={() => setEleccion(e)}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              eleccion === e
+                ? 'bg-white text-impepac-magenta-700 shadow-sm'
+                : 'text-slate-500 hover:text-impepac-ink'
+            }`}
+          >
+            {ETIQUETAS_ELECCION[e]}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <p className="mb-4 rounded-lg bg-impepac-magenta-50 px-4 py-3 text-sm text-impepac-magenta-700">
           {error}
@@ -66,7 +95,9 @@ export default function ConsultaPage() {
 
       {ultimo === null && !error && (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-slate-600">Aún no se ha publicado ningún corte de resultados.</p>
+          <p className="text-slate-600">
+            Aún no se ha publicado ningún corte de resultados para {ETIQUETAS_ELECCION[eleccion]}.
+          </p>
         </div>
       )}
 

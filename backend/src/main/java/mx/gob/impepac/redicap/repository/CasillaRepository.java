@@ -12,4 +12,7 @@ public interface CasillaRepository extends JpaRepository<Casilla, Long> {
     boolean existsBySeccionId(Long seccionId);
     boolean existsBySeccionIdAndTipoAndNumeroCasilla(
         Long seccionId, mx.gob.impepac.redicap.domain.enums.TipoCasilla tipo, Integer numeroCasilla);
+
+    /** Las casillas ESPECIAL no participan en Ayuntamiento (DFR R5). */
+    long countByTipoNot(mx.gob.impepac.redicap.domain.enums.TipoCasilla tipo);
 }

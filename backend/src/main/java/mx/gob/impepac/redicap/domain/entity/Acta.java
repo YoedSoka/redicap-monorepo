@@ -3,17 +3,24 @@ package mx.gob.impepac.redicap.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import mx.gob.impepac.redicap.domain.enums.EstadoActa;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import java.time.LocalDateTime;
 
 /**
  * Acta de Escrutinio y Cómputo (núcleo del sistema – DFR R1-R9).
  * Contiene la imagen digitalizada, su hash de integridad y el estado
  * en la máquina de estados del flujo de captura.
+ *
+ * Cada casilla produce hasta 3 actas independientes, una por elección
+ * (Gubernatura, Diputación Local, Ayuntamiento) — son documentos físicos
+ * separados en la práctica real, no un acta combinada (DFR R4/R5/R6).
  */
 @Entity @Table(name = "actas",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"casilla_id", "tipo_eleccion"}),
     indexes = {
         @Index(name = "idx_actas_casilla", columnList = "casilla_id"),
-        @Index(name = "idx_actas_estado",  columnList = "estado")
+        @Index(name = "idx_actas_estado",  columnList = "estado"),
+        @Index(name = "idx_actas_tipo_eleccion", columnList = "tipo_eleccion")
     })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Acta {
@@ -24,6 +31,10 @@ public class Acta {
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "casilla_id")
     private Casilla casilla;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_eleccion", nullable = false, length = 30)
+    private TipoEleccion tipoEleccion;
 
     /** Ruta relativa encriptada al archivo de imagen en el servidor. */
     @Column(name = "ruta_imagen", length = 500)

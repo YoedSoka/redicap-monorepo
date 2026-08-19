@@ -3,6 +3,7 @@ package mx.gob.impepac.redicap.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
 import mx.gob.impepac.redicap.security.userdetails.UsuarioPrincipal;
 import mx.gob.impepac.redicap.service.DigitalizacionService;
@@ -26,10 +27,12 @@ public class DigitalizacionController {
     @PreAuthorize("hasRole('DIGITALIZADOR')")
     public ResponseEntity<ActaResponse> recibir(
             @RequestParam Long casillaId,
+            @RequestParam TipoEleccion tipoEleccion,
             @RequestParam String hashSha256,
             @RequestParam MultipartFile imagen,
             @AuthenticationPrincipal UsuarioPrincipal principal) {
-        ActaResponse response = digitalizacionService.recibirActa(casillaId, principal.getId(), imagen, hashSha256);
+        ActaResponse response = digitalizacionService.recibirActa(
+                casillaId, tipoEleccion, principal.getId(), imagen, hashSha256);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

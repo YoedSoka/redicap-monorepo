@@ -7,6 +7,8 @@ import mx.gob.impepac.redicap.domain.entity.Casilla;
 import mx.gob.impepac.redicap.domain.entity.LogAuditoria;
 import mx.gob.impepac.redicap.domain.entity.Usuario;
 import mx.gob.impepac.redicap.domain.enums.EstadoActa;
+import mx.gob.impepac.redicap.domain.enums.TipoCasilla;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
 import mx.gob.impepac.redicap.exception.RedicapException;
 import mx.gob.impepac.redicap.repository.ActaRepository;
@@ -53,7 +55,8 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
     private String actasPath;
 
     @Override
-    public ActaResponse recibirActa(Long casillaId, Long digitalizadorId, MultipartFile imagen, String hashSha256Cliente) {
+    public ActaResponse recibirActa(Long casillaId, TipoEleccion tipoEleccion, Long digitalizadorId,
+                                     MultipartFile imagen, String hashSha256Cliente) {
         if (imagen == null || imagen.isEmpty()) {
             throw RedicapException.badRequest("La imagen del acta es obligatoria");
         }
@@ -70,8 +73,12 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
         if (!Boolean.TRUE.equals(casilla.getActiva())) {
             throw RedicapException.badRequest("La casilla no está activa en el catálogo");
         }
-        if (actaRepo.findByCasillaId(casillaId).isPresent()) {
-            throw RedicapException.conflict("Esta casilla ya tiene un acta digitalizada");
+        // Las casillas ESPECIAL solo reciben votos de Gubernatura y Diputación (DFR R5).
+        if (casilla.getTipo() == TipoCasilla.ESPECIAL && tipoEleccion == TipoEleccion.AYUNTAMIENTO) {
+            throw RedicapException.badRequest("Las casillas especiales no participan en la elección de Ayuntamiento");
+        }
+        if (actaRepo.findByCasillaIdAndTipoEleccion(casillaId, tipoEleccion).isPresent()) {
+            throw RedicapException.conflict("Esta casilla ya tiene un acta digitalizada para esa elección");
         }
 
         byte[] contenido = leerBytes(imagen);
@@ -80,10 +87,11 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
             throw RedicapException.badRequest("El hash SHA-256 no coincide con la imagen recibida");
         }
 
-        String rutaRelativa = almacenar(casillaId, contenido, EXTENSION_POR_TIPO.get(tipo));
+        String rutaRelativa = almacenar(casillaId, tipoEleccion, contenido, EXTENSION_POR_TIPO.get(tipo));
 
         Acta acta = Acta.builder()
                 .casilla(casilla)
+                .tipoEleccion(tipoEleccion)
                 .rutaImagen(rutaRelativa)
                 .hashSha256(hashCalculado)
                 .estado(EstadoActa.EN_CAPTURA_1)
@@ -98,7 +106,8 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
                 .entidadAfectada("Acta#" + acta.getId())
                 .build());
 
-        log.info("Acta {} digitalizada para casilla {} por usuario {}", acta.getId(), casillaId, digitalizadorId);
+        log.info("Acta {} digitalizada para casilla {} ({}) por usuario {}",
+                acta.getId(), casillaId, tipoEleccion, digitalizadorId);
         return ActaResponse.from(acta);
     }
 
@@ -119,9 +128,9 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
         }
     }
 
-    private String almacenar(Long casillaId, byte[] contenido, String extension) {
+    private String almacenar(Long casillaId, TipoEleccion tipoEleccion, byte[] contenido, String extension) {
         try {
-            Path directorio = Path.of(actasPath, casillaId.toString());
+            Path directorio = Path.of(actasPath, casillaId.toString(), tipoEleccion.name());
             Files.createDirectories(directorio);
             String nombreArchivo = UUID.randomUUID() + "." + extension;
             Path archivo = directorio.resolve(nombreArchivo);
@@ -140,7 +149,7 @@ public class DigitalizacionServiceImpl implements DigitalizacionService {
                     }
                 }
             });
-            return casillaId + "/" + nombreArchivo;
+            return casillaId + "/" + tipoEleccion.name() + "/" + nombreArchivo;
         } catch (IOException e) {
             throw new RedicapException("Error al almacenar la imagen", HttpStatus.INTERNAL_SERVER_ERROR);
         }

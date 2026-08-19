@@ -13,14 +13,16 @@ import okhttp3.RequestBody.Companion.toRequestBody
 suspend fun subirActaBytes(
     api: ApiService,
     casillaId: Long,
+    tipoEleccion: String,
     hashSha256: String,
     bytes: ByteArray,
     nombreArchivo: String,
 ): ActaResponse {
     val casillaBody = casillaId.toString().toRequestBody("text/plain".toMediaType())
+    val tipoEleccionBody = tipoEleccion.toRequestBody("text/plain".toMediaType())
     val hashBody = hashSha256.toRequestBody("text/plain".toMediaType())
     val imagenPart = MultipartBody.Part.createFormData(
         "imagen", nombreArchivo, bytes.toRequestBody("image/jpeg".toMediaType())
     )
-    return api.subirActa(casillaBody, hashBody, imagenPart)
+    return api.subirActa(casillaBody, tipoEleccionBody, hashBody, imagenPart)
 }

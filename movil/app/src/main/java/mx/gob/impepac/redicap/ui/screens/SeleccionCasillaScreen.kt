@@ -14,8 +14,16 @@ import mx.gob.impepac.redicap.data.model.MunicipioResponse
 import mx.gob.impepac.redicap.data.model.SeccionResponse
 import mx.gob.impepac.redicap.data.network.llamar
 
+/** Elecciones simultáneas del proceso (DFR R4/R5/R6); cada una produce un acta independiente. */
+private val ELECCIONES = listOf(
+    "GUBERNATURA" to "Gubernatura",
+    "DIPUTACION_LOCAL" to "Diputación Local",
+    "AYUNTAMIENTO" to "Ayuntamiento",
+)
+
 /**
- * Selector encadenado Distrito -> Municipio -> Sección -> Casilla.
+ * Selector encadenado Distrito -> Municipio -> Sección -> Casilla, más la elección a digitalizar
+ * (una casilla produce hasta 3 actas independientes, una por elección).
  * Si el usuario tiene una casilla preasignada, se usa como punto de partida
  * (sigue siendo el valor por defecto), pero se puede cambiar libremente.
  */
@@ -23,9 +31,10 @@ import mx.gob.impepac.redicap.data.network.llamar
 fun SeleccionCasillaScreen(
     container: AppContainer,
     casillaAsignadaId: Long?,
-    onCasillaElegida: (casillaId: Long) -> Unit,
+    onCasillaElegida: (casillaId: Long, tipoEleccion: String) -> Unit,
     onVolver: () -> Unit,
 ) {
+    var tipoEleccionElegida by remember { mutableStateOf(ELECCIONES.first().first) }
     var distritos by remember { mutableStateOf<List<DistritoResponse>>(emptyList()) }
     var municipios by remember { mutableStateOf<List<MunicipioResponse>>(emptyList()) }
     var secciones by remember { mutableStateOf<List<SeccionResponse>>(emptyList()) }
@@ -114,6 +123,14 @@ fun SeleccionCasillaScreen(
             CircularProgressIndicator()
         } else {
             SelectorDesplegable(
+                etiqueta = "Elección",
+                opciones = ELECCIONES,
+                seleccionado = ELECCIONES.find { it.first == tipoEleccionElegida },
+                etiquetaDe = { it.second },
+                onSeleccionar = { tipoEleccionElegida = it.first },
+            )
+            Spacer(Modifier.height(12.dp))
+            SelectorDesplegable(
                 etiqueta = "Distrito",
                 opciones = distritos,
                 seleccionado = distritoElegido,
@@ -169,7 +186,7 @@ fun SeleccionCasillaScreen(
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick = { casillaElegida?.let { onCasillaElegida(it.id) } },
+            onClick = { casillaElegida?.let { onCasillaElegida(it.id, tipoEleccionElegida) } },
             enabled = casillaElegida != null,
             modifier = Modifier.fillMaxWidth(),
         ) {

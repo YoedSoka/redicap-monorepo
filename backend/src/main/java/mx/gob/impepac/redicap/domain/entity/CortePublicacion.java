@@ -2,10 +2,12 @@ package mx.gob.impepac.redicap.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import java.time.LocalDateTime;
 
 /**
- * Snapshot de resultados cada 10 minutos (DFR R4).
+ * Snapshot de resultados cada 10 minutos (DFR R4). Se genera un corte
+ * independiente por elección (Gubernatura, Diputación, Ayuntamiento – DFR R5).
  * La réplica de publicación lee de aquí, nunca de las tablas transaccionales.
  */
 @Entity @Table(name = "cortes_publicacion")
@@ -14,6 +16,10 @@ public class CortePublicacion {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_eleccion", nullable = false, length = 30)
+    private TipoEleccion tipoEleccion;
 
     @Column(name = "generado_at", nullable = false, updatable = false)
     private LocalDateTime generadoAt;

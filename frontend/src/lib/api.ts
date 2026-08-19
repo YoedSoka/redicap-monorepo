@@ -23,9 +23,21 @@ export type EstadoActa =
   | 'ILEGIBLE'
   | 'PUBLICADA'
 
+/** Cada casilla produce hasta 3 actas independientes, una por elección (DFR R4/R5/R6). */
+export type TipoEleccion = 'GUBERNATURA' | 'DIPUTACION_LOCAL' | 'AYUNTAMIENTO'
+
+export const ELECCIONES: TipoEleccion[] = ['GUBERNATURA', 'DIPUTACION_LOCAL', 'AYUNTAMIENTO']
+
+export const ETIQUETAS_ELECCION: Record<TipoEleccion, string> = {
+  GUBERNATURA: 'Gubernatura',
+  DIPUTACION_LOCAL: 'Diputación Local',
+  AYUNTAMIENTO: 'Ayuntamiento',
+}
+
 export interface ActaResponse {
   id: number
   casillaId: number
+  tipoEleccion: TipoEleccion
   estado: EstadoActa
   rutaImagen: string | null
   errorAritmetico: boolean
@@ -43,6 +55,24 @@ export interface CapturaResumenResponse {
 export interface VerificacionDetalleResponse {
   acta: ActaResponse
   capturas: CapturaResumenResponse[]
+}
+
+/** Catálogo de motivos para toda resolución del Verificador (DFR R3: justificación obligatoria). */
+export type MotivoDictamenVerificador =
+  | 'COINCIDENCIA_CLARA_CON_ACTA_FISICA'
+  | 'ERROR_DE_CAPTURA_EVIDENTE'
+  | 'IMAGEN_BORROSA_O_MOVIDA'
+  | 'OBSTRUCCION_O_DANO_FISICO'
+  | 'ILUMINACION_INSUFICIENTE'
+  | 'OTRO'
+
+export const ETIQUETAS_MOTIVO_DICTAMEN: Record<MotivoDictamenVerificador, string> = {
+  COINCIDENCIA_CLARA_CON_ACTA_FISICA: 'Coincidencia clara con el acta física',
+  ERROR_DE_CAPTURA_EVIDENTE: 'Error de captura evidente en las otras capturas',
+  IMAGEN_BORROSA_O_MOVIDA: 'Imagen borrosa o movida',
+  OBSTRUCCION_O_DANO_FISICO: 'Obstrucción o daño físico en el papel',
+  ILUMINACION_INSUFICIENTE: 'Iluminación insuficiente',
+  OTRO: 'Otro',
 }
 
 export type Rol = 'ADMINISTRADOR' | 'DIGITALIZADOR' | 'CAPTURISTA' | 'VERIFICADOR' | 'CONSULTOR_PUBLICO'
@@ -157,6 +187,7 @@ export interface ActualizarPartidoRequest {
 
 export interface CorteResponse {
   id: number
+  tipoEleccion: TipoEleccion
   generadoAt: string
   totalActasCapturadas: number
   totalActasValidadas: number
@@ -227,10 +258,15 @@ export async function calcularSha256(archivo: File): Promise<string> {
     .join('')
 }
 
-export async function subirActaDigitalizada(casillaId: number, archivo: File): Promise<ActaResponse> {
+export async function subirActaDigitalizada(
+  casillaId: number,
+  tipoEleccion: TipoEleccion,
+  archivo: File,
+): Promise<ActaResponse> {
   const hashSha256 = await calcularSha256(archivo)
   const form = new FormData()
   form.append('casillaId', String(casillaId))
+  form.append('tipoEleccion', tipoEleccion)
   form.append('hashSha256', hashSha256)
   form.append('imagen', archivo)
   const { data } = await api.post<ActaResponse>('/digitalizacion', form)
@@ -249,13 +285,29 @@ export async function obtenerDetalleVerificacion(actaId: number): Promise<Verifi
   return data
 }
 
-export async function validarVerificacion(actaId: number, numeroCapturaElegida: number): Promise<ActaResponse> {
-  const { data } = await api.post<ActaResponse>(`/verificaciones/${actaId}/validar`, { numeroCapturaElegida })
+export async function validarVerificacion(
+  actaId: number,
+  numeroCapturaElegida: number,
+  motivoCatalogo: MotivoDictamenVerificador,
+  justificacion: string,
+): Promise<ActaResponse> {
+  const { data } = await api.post<ActaResponse>(`/verificaciones/${actaId}/validar`, {
+    numeroCapturaElegida,
+    motivoCatalogo,
+    justificacion,
+  })
   return data
 }
 
-export async function marcarIlegible(actaId: number, motivo: string): Promise<ActaResponse> {
-  const { data } = await api.post<ActaResponse>(`/verificaciones/${actaId}/ilegible`, { motivo })
+export async function marcarIlegible(
+  actaId: number,
+  motivoCatalogo: MotivoDictamenVerificador,
+  justificacion: string,
+): Promise<ActaResponse> {
+  const { data } = await api.post<ActaResponse>(`/verificaciones/${actaId}/ilegible`, {
+    motivoCatalogo,
+    justificacion,
+  })
   return data
 }
 
@@ -368,9 +420,9 @@ export async function cambiarActivoPartido(id: number, activo: boolean): Promise
 
 // ── Publicación (consulta pública) ───────────────────────────────────────
 
-export async function obtenerUltimoCorte(): Promise<CorteResponse | null> {
+export async function obtenerUltimoCorte(tipoEleccion: TipoEleccion): Promise<CorteResponse | null> {
   try {
-    const { data } = await api.get<CorteResponse>('/publicacion/ultimo-corte')
+    const { data } = await api.get<CorteResponse>(`/publicacion/${tipoEleccion}/ultimo-corte`)
     return data
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 204) {
@@ -380,8 +432,8 @@ export async function obtenerUltimoCorte(): Promise<CorteResponse | null> {
   }
 }
 
-export async function obtenerHistorialCortes(): Promise<CorteResponse[]> {
-  const { data } = await api.get<CorteResponse[]>('/publicacion/historial')
+export async function obtenerHistorialCortes(tipoEleccion: TipoEleccion): Promise<CorteResponse[]> {
+  const { data } = await api.get<CorteResponse[]>(`/publicacion/${tipoEleccion}/historial`)
   return data
 }
 

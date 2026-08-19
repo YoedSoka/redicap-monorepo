@@ -23,7 +23,7 @@ private const val RUTA_LOGIN = "login"
 private const val RUTA_HOME = "home"
 private const val RUTA_COLA = "cola"
 private const val RUTA_SELECCION = "seleccion/{casillaAsignadaId}"
-private const val RUTA_CAPTURA = "captura/{casillaId}"
+private const val RUTA_CAPTURA = "captura/{casillaId}/{tipoEleccion}"
 /** -1L marca "sin casilla asignada" en la ruta (NavType.LongType no admite null). */
 private const val SIN_ASIGNAR = -1L
 
@@ -42,6 +42,20 @@ fun RedicapApp(container: AppContainer) {
     }
 
     if (!sesionResuelta) return
+
+    // Si el interceptor de red detecta que el token murió (sesión única invalidada en otro
+    // dispositivo, o expiró), regresa a login limpiando toda la pila de navegación en vez de
+    // dejar al usuario atorado en una pantalla rota con un error 401 sin salida.
+    LaunchedEffect(Unit) {
+        container.tokenStore.sesionInvalidada.collect {
+            scope.launch {
+                snackbarHostState.showSnackbar("Tu sesión terminó: se inició sesión en otro dispositivo.")
+            }
+            navController.navigate(RUTA_LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         NavHost(
@@ -84,18 +98,25 @@ fun RedicapApp(container: AppContainer) {
                 SeleccionCasillaScreen(
                     container = container,
                     casillaAsignadaId = casillaAsignadaId,
-                    onCasillaElegida = { casillaId -> navController.navigate("captura/$casillaId") },
+                    onCasillaElegida = { casillaId, tipoEleccion ->
+                        navController.navigate("captura/$casillaId/$tipoEleccion")
+                    },
                     onVolver = { navController.popBackStack() },
                 )
             }
             composable(
                 RUTA_CAPTURA,
-                arguments = listOf(navArgument("casillaId") { type = NavType.LongType }),
+                arguments = listOf(
+                    navArgument("casillaId") { type = NavType.LongType },
+                    navArgument("tipoEleccion") { type = NavType.StringType },
+                ),
             ) { backStackEntry ->
                 val casillaId = backStackEntry.arguments?.getLong("casillaId") ?: 0L
+                val tipoEleccion = backStackEntry.arguments?.getString("tipoEleccion") ?: "GUBERNATURA"
                 CapturaScreen(
                     container = container,
                     casillaId = casillaId,
+                    tipoEleccion = tipoEleccion,
                     onListo = { mensaje ->
                         scope.launch { snackbarHostState.showSnackbar(mensaje) }
                         navController.popBackStack(RUTA_HOME, inclusive = false)

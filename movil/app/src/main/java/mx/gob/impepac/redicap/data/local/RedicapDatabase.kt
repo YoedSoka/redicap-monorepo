@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-@Database(entities = [ActaPendiente::class, ActaCompletada::class], version = 2, exportSchema = false)
+@Database(entities = [ActaPendiente::class, ActaCompletada::class], version = 3, exportSchema = false)
 abstract class RedicapDatabase : RoomDatabase() {
     abstract fun actaPendienteDao(): ActaPendienteDao
     abstract fun actaCompletadaDao(): ActaCompletadaDao

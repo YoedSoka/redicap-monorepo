@@ -28,6 +28,7 @@ data class UsuarioResponse(
 data class ActaResponse(
     val id: Long,
     val casillaId: Long,
+    val tipoEleccion: String? = null,
     val estado: String,
     val rutaImagen: String? = null,
     val errorAritmetico: Boolean = false,

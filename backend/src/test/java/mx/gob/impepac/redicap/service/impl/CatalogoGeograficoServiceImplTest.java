@@ -317,7 +317,7 @@ class CatalogoGeograficoServiceImplTest {
     @Test
     void eliminarCasilla_sinActa_seElimina() {
         when(casillaRepo.existsById(5L)).thenReturn(true);
-        when(actaRepo.findByCasillaId(5L)).thenReturn(Optional.empty());
+        when(actaRepo.existsByCasillaId(5L)).thenReturn(false);
 
         service.eliminarCasilla(5L, ADMIN_ID);
 
@@ -327,7 +327,7 @@ class CatalogoGeograficoServiceImplTest {
     @Test
     void eliminarCasilla_conActaDigitalizada_lanzaConflictYNoElimina() {
         when(casillaRepo.existsById(5L)).thenReturn(true);
-        when(actaRepo.findByCasillaId(5L)).thenReturn(Optional.of(Acta.builder().id(10L).build()));
+        when(actaRepo.existsByCasillaId(5L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.eliminarCasilla(5L, ADMIN_ID))
                 .isInstanceOf(RedicapException.class)

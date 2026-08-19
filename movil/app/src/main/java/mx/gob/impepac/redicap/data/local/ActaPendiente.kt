@@ -18,6 +18,7 @@ object EstadoCola {
 data class ActaPendiente(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val casillaId: Long,
+    val tipoEleccion: String,
     val rutaArchivo: String,
     val hashSha256: String,
     val creadoEn: Long = System.currentTimeMillis(),

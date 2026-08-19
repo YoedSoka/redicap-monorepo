@@ -9,6 +9,7 @@ import mx.gob.impepac.redicap.domain.entity.CapturaActa;
 import mx.gob.impepac.redicap.domain.entity.CortePublicacion;
 import mx.gob.impepac.redicap.domain.entity.LogAuditoria;
 import mx.gob.impepac.redicap.domain.enums.EstadoActa;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import mx.gob.impepac.redicap.repository.ActaRepository;
 import mx.gob.impepac.redicap.repository.CapturaActaRepository;
 import mx.gob.impepac.redicap.repository.CasillaRepository;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,7 +37,7 @@ public class PublicacionServiceImpl implements PublicacionService {
 
     private static final List<EstadoActa> ESTADOS_FINALIZADOS =
             List.of(EstadoActa.VALIDADA, EstadoActa.VALIDADA_VERIFICADOR, EstadoActa.PUBLICADA);
-    private static final String CACHE_KEY_ULTIMO_CORTE = "corte:ultimo";
+    private static final String PREFIJO_CACHE_ULTIMO_CORTE = "corte:ultimo:";
 
     private final ActaRepository actaRepo;
     private final CasillaRepository casillaRepo;
@@ -47,17 +49,21 @@ public class PublicacionServiceImpl implements PublicacionService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public CortePublicacion generarCorte() {
-        try {
-            return generarCorteInterno();
-        } catch (Exception e) {
-            log.error("Error generando corte de publicación", e);
-            return corteFallidoRecorder.registrarCorteFallido();
+    public List<CortePublicacion> generarCorte() {
+        List<CortePublicacion> cortes = new ArrayList<>();
+        for (TipoEleccion tipoEleccion : TipoEleccion.values()) {
+            try {
+                cortes.add(generarCorteInterno(tipoEleccion));
+            } catch (Exception e) {
+                log.error("Error generando corte de publicación para {}", tipoEleccion, e);
+                cortes.add(corteFallidoRecorder.registrarCorteFallido(tipoEleccion));
+            }
         }
+        return cortes;
     }
 
-    private CortePublicacion generarCorteInterno() {
-        List<Acta> finalizadas = actaRepo.findByEstadoIn(ESTADOS_FINALIZADOS);
+    private CortePublicacion generarCorteInterno(TipoEleccion tipoEleccion) {
+        List<Acta> finalizadas = actaRepo.findByEstadoInAndTipoEleccion(ESTADOS_FINALIZADOS, tipoEleccion);
 
         Map<String, Integer> resultados = new TreeMap<>();
         int totalVotos = 0;
@@ -72,7 +78,10 @@ public class PublicacionServiceImpl implements PublicacionService {
 
         long totalActas = actaRepo.count();
         long sinCapturar = actaRepo.countByEstado(EstadoActa.RECIBIDA) + actaRepo.countByEstado(EstadoActa.EN_CAPTURA_1);
-        long totalCasillas = casillaRepo.count();
+        // Las casillas ESPECIAL no participan en Ayuntamiento (DFR R5).
+        long totalCasillas = tipoEleccion == TipoEleccion.AYUNTAMIENTO
+                ? casillaRepo.countByTipoNot(mx.gob.impepac.redicap.domain.enums.TipoCasilla.ESPECIAL)
+                : casillaRepo.count();
         Double participacion = totalListaNominal > 0
                 ? Math.round(totalVotos * 10000.0 / totalListaNominal) / 100.0
                 : null;
@@ -88,6 +97,7 @@ public class PublicacionServiceImpl implements PublicacionService {
         actaRepo.saveAll(nuevasPublicadas);
 
         CortePublicacion corte = CortePublicacion.builder()
+                .tipoEleccion(tipoEleccion)
                 .totalActasCapturadas((int) (totalActas - sinCapturar))
                 .totalActasValidadas(finalizadas.size())
                 .totalCasillas((int) totalCasillas)
@@ -98,35 +108,38 @@ public class PublicacionServiceImpl implements PublicacionService {
         corteRepo.save(corte);
         cachearUltimoCorte(corte);
 
-        log.info("Corte generado: {} actas validadas de {} casillas ({} recién publicadas)",
-                finalizadas.size(), totalCasillas, nuevasPublicadas.size());
+        log.info("Corte generado ({}): {} actas validadas de {} casillas ({} recién publicadas)",
+                tipoEleccion, finalizadas.size(), totalCasillas, nuevasPublicadas.size());
         return corte;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<CortePublicacion> obtenerUltimoCorte() {
+    public Optional<CortePublicacion> obtenerUltimoCorte(TipoEleccion tipoEleccion) {
         try {
-            String cacheado = redisTemplate.opsForValue().get(CACHE_KEY_ULTIMO_CORTE);
+            String cacheado = redisTemplate.opsForValue().get(PREFIJO_CACHE_ULTIMO_CORTE + tipoEleccion);
             if (cacheado != null) {
                 return Optional.of(objectMapper.readValue(cacheado, CortePublicacion.class));
             }
         } catch (Exception e) {
             log.warn("No se pudo leer el corte cacheado en Redis, se consulta la BD", e);
         }
-        return corteRepo.findTopByOrderByGeneradoAtDesc();
+        return corteRepo.findTopByTipoEleccionOrderByGeneradoAtDesc(tipoEleccion);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CortePublicacion> obtenerHistorial() {
-        return corteRepo.findTop20ByExitosoTrueOrderByGeneradoAtDesc();
+    public List<CortePublicacion> obtenerHistorial(TipoEleccion tipoEleccion) {
+        return corteRepo.findTop20ByTipoEleccionAndExitosoTrueOrderByGeneradoAtDesc(tipoEleccion);
     }
 
     /** El caché es solo una optimización de lectura; si Redis falla no debe tumbar el corte ya guardado en BD. */
     private void cachearUltimoCorte(CortePublicacion corte) {
         try {
-            redisTemplate.opsForValue().set(CACHE_KEY_ULTIMO_CORTE, objectMapper.writeValueAsString(corte), Duration.ofMinutes(15));
+            redisTemplate.opsForValue().set(
+                    PREFIJO_CACHE_ULTIMO_CORTE + corte.getTipoEleccion(),
+                    objectMapper.writeValueAsString(corte),
+                    Duration.ofMinutes(15));
         } catch (Exception e) {
             log.warn("No se pudo cachear el corte en Redis", e);
         }

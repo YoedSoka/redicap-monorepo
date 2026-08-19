@@ -2,6 +2,7 @@ package mx.gob.impepac.redicap.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import mx.gob.impepac.redicap.domain.entity.CortePublicacion;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 import mx.gob.impepac.redicap.repository.CortePublicacionRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -19,8 +20,9 @@ class CorteFallidoRecorder {
     private final CortePublicacionRepository corteRepo;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public CortePublicacion registrarCorteFallido() {
+    public CortePublicacion registrarCorteFallido(TipoEleccion tipoEleccion) {
         return corteRepo.save(CortePublicacion.builder()
+                .tipoEleccion(tipoEleccion)
                 .totalActasCapturadas(0)
                 .totalActasValidadas(0)
                 .totalCasillas(0)

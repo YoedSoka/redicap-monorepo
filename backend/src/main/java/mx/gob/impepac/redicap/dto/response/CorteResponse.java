@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.Data;
 import mx.gob.impepac.redicap.domain.entity.CortePublicacion;
+import mx.gob.impepac.redicap.domain.enums.TipoEleccion;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.Map;
 @Builder
 public class CorteResponse {
     private Long id;
+    private TipoEleccion tipoEleccion;
     private LocalDateTime generadoAt;
     private Integer totalActasCapturadas;
     private Integer totalActasValidadas;
@@ -24,6 +26,7 @@ public class CorteResponse {
     public static CorteResponse from(CortePublicacion c, ObjectMapper mapper) {
         return CorteResponse.builder()
                 .id(c.getId())
+                .tipoEleccion(c.getTipoEleccion())
                 .generadoAt(c.getGeneradoAt())
                 .totalActasCapturadas(c.getTotalActasCapturadas())
                 .totalActasValidadas(c.getTotalActasValidadas())

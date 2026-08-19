@@ -186,7 +186,7 @@ public class CatalogoGeograficoServiceImpl implements CatalogoGeograficoService 
         if (!casillaRepo.existsById(id)) {
             throw RedicapException.notFound("Casilla", id);
         }
-        if (actaRepo.findByCasillaId(id).isPresent()) {
+        if (actaRepo.existsByCasillaId(id)) {
             throw RedicapException.conflict("No se puede eliminar: esta casilla ya tiene un acta digitalizada");
         }
         casillaRepo.deleteById(id);

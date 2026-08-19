@@ -33,6 +33,7 @@ interface ApiService {
     @POST("digitalizacion")
     suspend fun subirActa(
         @Part("casillaId") casillaId: RequestBody,
+        @Part("tipoEleccion") tipoEleccion: RequestBody,
         @Part("hashSha256") hashSha256: RequestBody,
         @Part imagen: MultipartBody.Part,
     ): ActaResponse

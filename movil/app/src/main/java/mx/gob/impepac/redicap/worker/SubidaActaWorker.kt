@@ -71,7 +71,9 @@ class SubidaActaWorker(
         val dao = container.database.actaPendienteDao()
         return try {
             val bytes = SeguridadLocal.leerCifrado(applicationContext, archivo)
-            val respuesta = subirActaBytes(container.api, pendiente.casillaId, pendiente.hashSha256, bytes, archivo.name)
+            val respuesta = subirActaBytes(
+                container.api, pendiente.casillaId, pendiente.tipoEleccion, pendiente.hashSha256, bytes, archivo.name
+            )
 
             dao.eliminar(pendiente)
             archivo.delete()

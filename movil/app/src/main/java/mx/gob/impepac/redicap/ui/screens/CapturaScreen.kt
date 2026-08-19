@@ -5,19 +5,13 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,7 +25,6 @@ import mx.gob.impepac.redicap.data.local.ActaPendiente
 import mx.gob.impepac.redicap.data.local.SeguridadLocal
 import mx.gob.impepac.redicap.data.network.extraerMensajeError
 import mx.gob.impepac.redicap.data.network.subirActaBytes
-import mx.gob.impepac.redicap.vision.detectarYRecortarActa
 import mx.gob.impepac.redicap.worker.programarSubidaPendientes
 import retrofit2.HttpException
 import java.io.ByteArrayOutputStream
@@ -43,6 +36,7 @@ import java.security.MessageDigest
 fun CapturaScreen(
     container: AppContainer,
     casillaId: Long,
+    tipoEleccion: String,
     onListo: (mensaje: String) -> Unit,
     onVolver: () -> Unit,
 ) {
@@ -50,7 +44,7 @@ fun CapturaScreen(
     var archivoTemporal by remember { mutableStateOf<File?>(null) }
     var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var procesando by remember { mutableStateOf(false) }
-    var bitmapRecortado by remember { mutableStateOf<Bitmap?>(null) }
+    var bitmapCapturado by remember { mutableStateOf<Bitmap?>(null) }
     var legibilidadConfirmada by remember { mutableStateOf(false) }
     var guardando by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -61,20 +55,18 @@ fun CapturaScreen(
         if (!exito || archivo == null) {
             archivoTemporal = null
             fotoUri = null
-            bitmapRecortado = null
+            bitmapCapturado = null
             return@rememberLauncherForActivityResult
         }
         scope.launch {
             procesando = true
             error = null
             try {
-                val original = withContext(Dispatchers.IO) {
+                val foto = withContext(Dispatchers.IO) {
                     val opciones = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
                     BitmapFactory.decodeFile(archivo.absolutePath, opciones)
                 }
-                val recortado = withContext(Dispatchers.Default) { detectarYRecortarActa(original) }
-                if (recortado !== original) original.recycle()
-                bitmapRecortado = recortado
+                bitmapCapturado = foto
                 legibilidadConfirmada = false
             } catch (e: Exception) {
                 error = "No se pudo procesar la foto: ${e.message}"
@@ -90,14 +82,14 @@ fun CapturaScreen(
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
         archivoTemporal = archivo
         fotoUri = uri
-        bitmapRecortado = null
+        bitmapCapturado = null
         legibilidadConfirmada = false
         error = null
         tomarFoto.launch(uri)
     }
 
     fun confirmarYEnviar() {
-        val bitmap = bitmapRecortado ?: return
+        val bitmap = bitmapCapturado ?: return
         error = null
         guardando = true
         scope.launch {
@@ -116,7 +108,7 @@ fun CapturaScreen(
                 archivoTemporal?.delete()
 
                 try {
-                    val respuesta = subirActaBytes(container.api, casillaId, hash, bytes, archivoCifrado.name)
+                    val respuesta = subirActaBytes(container.api, casillaId, tipoEleccion, hash, bytes, archivoCifrado.name)
                     archivoCifrado.delete()
                     container.database.actaCompletadaDao().insertar(
                         ActaCompletada(casillaId = casillaId, folio = respuesta.folio ?: "—")
@@ -124,7 +116,7 @@ fun CapturaScreen(
                     onListo("Acta recibida. Folio ${respuesta.folio ?: "sin folio"}.")
                 } catch (e: HttpException) {
                     if (e.code() in 500..599) {
-                        encolarParaReintento(container, context, casillaId, archivoCifrado.absolutePath, hash)
+                        encolarParaReintento(container, context, casillaId, tipoEleccion, archivoCifrado.absolutePath, hash)
                         onListo("El servidor no respondió. El acta quedó guardada y se reintentará sola.")
                     } else {
                         // Rechazo de negocio (casilla inactiva, ya digitalizada, etc.): no tiene
@@ -134,7 +126,7 @@ fun CapturaScreen(
                         guardando = false
                     }
                 } catch (e: IOException) {
-                    encolarParaReintento(container, context, casillaId, archivoCifrado.absolutePath, hash)
+                    encolarParaReintento(container, context, casillaId, tipoEleccion, archivoCifrado.absolutePath, hash)
                     onListo("Sin conexión. El acta quedó guardada cifrada y se subirá sola.")
                 }
             } catch (e: Exception) {
@@ -146,6 +138,11 @@ fun CapturaScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("Casilla $casillaId", style = MaterialTheme.typography.titleLarge)
+        Text(
+            etiquetaEleccion(tipoEleccion),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.height(16.dp))
 
         Box(
@@ -154,16 +151,14 @@ fun CapturaScreen(
         ) {
             when {
                 procesando -> CircularProgressIndicator()
-                bitmapRecortado != null -> Image(
-                    bitmap = bitmapRecortado!!.asImageBitmap(),
-                    contentDescription = "Acta recortada",
+                bitmapCapturado != null -> Image(
+                    bitmap = bitmapCapturado!!.asImageBitmap(),
+                    contentDescription = "Foto del acta",
                     modifier = Modifier.fillMaxSize(),
                 )
                 else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    GuiaFotografiaActa()
-                    Spacer(Modifier.height(12.dp))
                     Text(
-                        "Recuerda: los 4 puntos negros de las esquinas deben salir completos en la foto.",
+                        "Toma la foto del acta completa, bien iluminada y sin sombras.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -177,7 +172,7 @@ fun CapturaScreen(
             }
         }
 
-        if (bitmapRecortado != null && !procesando && !guardando) {
+        if (bitmapCapturado != null && !procesando && !guardando) {
             Spacer(Modifier.height(12.dp))
             TextButton(onClick = { iniciarCaptura() }) {
                 Text("Tomar de nuevo")
@@ -201,7 +196,7 @@ fun CapturaScreen(
         if (!legibilidadConfirmada) {
             Button(
                 onClick = { legibilidadConfirmada = true },
-                enabled = bitmapRecortado != null && !procesando,
+                enabled = bitmapCapturado != null && !procesando,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Confirmar Legibilidad")
@@ -222,59 +217,31 @@ fun CapturaScreen(
     }
 }
 
-/**
- * Boceto de una hoja de acta con un punto negro marcado en cada esquina — así se ve en el
- * documento real y así debe verse en la foto. Se dibuja a mano (sin asset) porque es más
- * fácil de mantener consistente con el resto de la UI que empacar un PNG.
- */
-@Composable
-private fun GuiaFotografiaActa() {
-    Canvas(modifier = Modifier.size(150.dp, 190.dp)) {
-        val margen = 14.dp.toPx()
-        val radioPunto = 5.dp.toPx()
-        val ancho = size.width - margen * 2
-        val alto = size.height - margen * 2
-
-        drawRoundRect(
-            color = Color(0xFF94A3B8),
-            topLeft = Offset(margen, margen),
-            size = Size(ancho, alto),
-            cornerRadius = CornerRadius(8.dp.toPx()),
-            style = Stroke(width = 2.dp.toPx()),
-        )
-
-        listOf(0.28f, 0.40f, 0.52f, 0.64f).forEach { fraccionY ->
-            drawLine(
-                color = Color(0xFFCBD5E1),
-                start = Offset(margen + ancho * 0.18f, margen + alto * fraccionY),
-                end = Offset(margen + ancho * 0.82f, margen + alto * fraccionY),
-                strokeWidth = 3.dp.toPx(),
-            )
-        }
-
-        listOf(
-            Offset(margen, margen),
-            Offset(margen + ancho, margen),
-            Offset(margen, margen + alto),
-            Offset(margen + ancho, margen + alto),
-        ).forEach { esquina ->
-            drawCircle(color = Color.Black, radius = radioPunto, center = esquina)
-        }
-    }
-}
-
 private suspend fun encolarParaReintento(
     container: AppContainer,
     context: android.content.Context,
     casillaId: Long,
+    tipoEleccion: String,
     rutaArchivoCifrado: String,
     hashSha256: String,
 ) {
     container.database.actaPendienteDao().insertar(
-        ActaPendiente(casillaId = casillaId, rutaArchivo = rutaArchivoCifrado, hashSha256 = hashSha256)
+        ActaPendiente(
+            casillaId = casillaId,
+            tipoEleccion = tipoEleccion,
+            rutaArchivo = rutaArchivoCifrado,
+            hashSha256 = hashSha256,
+        )
     )
     programarSubidaPendientes(context)
 }
 
 private fun sha256Hex(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+private fun etiquetaEleccion(tipoEleccion: String): String = when (tipoEleccion) {
+    "GUBERNATURA" -> "Gubernatura"
+    "DIPUTACION_LOCAL" -> "Diputación Local"
+    "AYUNTAMIENTO" -> "Ayuntamiento"
+    else -> tipoEleccion
+}
