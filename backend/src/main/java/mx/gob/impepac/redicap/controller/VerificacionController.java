@@ -43,7 +43,8 @@ public class VerificacionController {
     public ResponseEntity<ActaResponse> validar(@PathVariable Long actaId,
                                                  @Valid @RequestBody ValidarVerificacionRequest request,
                                                  @AuthenticationPrincipal UsuarioPrincipal principal) {
-        return ResponseEntity.ok(verificacionService.validar(actaId, principal.getId(), request.getNumeroCapturaElegida()));
+        return ResponseEntity.ok(verificacionService.validar(actaId, principal.getId(), request.getNumeroCapturaElegida(),
+                request.getMotivoCatalogo(), request.getJustificacion()));
     }
 
     @Operation(summary = "El acta física es ilegible o no permite determinar un resultado")
@@ -51,6 +52,7 @@ public class VerificacionController {
     public ResponseEntity<ActaResponse> ilegible(@PathVariable Long actaId,
                                                   @Valid @RequestBody IlegibleRequest request,
                                                   @AuthenticationPrincipal UsuarioPrincipal principal) {
-        return ResponseEntity.ok(verificacionService.marcarIlegible(actaId, principal.getId(), request.getMotivo()));
+        return ResponseEntity.ok(verificacionService.marcarIlegible(actaId, principal.getId(),
+                request.getMotivoCatalogo(), request.getJustificacion()));
     }
 }

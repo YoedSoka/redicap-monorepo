@@ -9,6 +9,7 @@ import mx.gob.impepac.redicap.domain.entity.CapturaActa;
 import mx.gob.impepac.redicap.domain.entity.LogAuditoria;
 import mx.gob.impepac.redicap.domain.entity.Usuario;
 import mx.gob.impepac.redicap.domain.enums.EstadoActa;
+import mx.gob.impepac.redicap.domain.enums.MotivoDictamenVerificador;
 import mx.gob.impepac.redicap.dto.response.ActaResponse;
 import mx.gob.impepac.redicap.dto.response.CapturaResumenResponse;
 import mx.gob.impepac.redicap.dto.response.VerificacionDetalleResponse;
@@ -61,7 +62,8 @@ public class VerificacionServiceImpl implements VerificacionService {
     }
 
     @Override
-    public ActaResponse validar(Long actaId, Long verificadorId, Integer numeroCapturaElegida) {
+    public ActaResponse validar(Long actaId, Long verificadorId, Integer numeroCapturaElegida,
+                                 MotivoDictamenVerificador motivoCatalogo, String justificacion) {
         Acta acta = obtenerActaEnDeliberacion(actaId);
         Usuario verificador = usuarioRepo.findById(verificadorId)
                 .orElseThrow(() -> RedicapException.notFound("Usuario", verificadorId));
@@ -74,15 +76,20 @@ public class VerificacionServiceImpl implements VerificacionService {
         acta.setEstado(EstadoActa.VALIDADA_VERIFICADOR);
         actaRepo.save(acta);
 
-        registrarAuditoria(verificador, "ACTA_VALIDADA_VERIFICADOR", acta.getId(),
-                Map.of("numeroCapturaElegida", numeroCapturaElegida, "votos", elegida.getDatosVotosJson()));
+        registrarAuditoria(verificador, "ACTA_VALIDADA_VERIFICADOR", acta.getId(), Map.of(
+                "numeroCapturaElegida", numeroCapturaElegida,
+                "votos", elegida.getDatosVotosJson(),
+                "motivoCatalogo", motivoCatalogo.name(),
+                "justificacion", justificacion));
 
-        log.info("Acta {} validada por verificador {} eligiendo captura {}", actaId, verificadorId, numeroCapturaElegida);
+        log.info("Acta {} validada por verificador {} eligiendo captura {} (motivo: {})",
+                actaId, verificadorId, numeroCapturaElegida, motivoCatalogo);
         return ActaResponse.from(acta);
     }
 
     @Override
-    public ActaResponse marcarIlegible(Long actaId, Long verificadorId, String motivo) {
+    public ActaResponse marcarIlegible(Long actaId, Long verificadorId,
+                                        MotivoDictamenVerificador motivoCatalogo, String justificacion) {
         Acta acta = obtenerActaEnDeliberacion(actaId);
         Usuario verificador = usuarioRepo.findById(verificadorId)
                 .orElseThrow(() -> RedicapException.notFound("Usuario", verificadorId));
@@ -90,9 +97,11 @@ public class VerificacionServiceImpl implements VerificacionService {
         acta.setEstado(EstadoActa.ILEGIBLE);
         actaRepo.save(acta);
 
-        registrarAuditoria(verificador, "ACTA_ILEGIBLE", acta.getId(), Map.of("motivo", motivo));
+        registrarAuditoria(verificador, "ACTA_ILEGIBLE", acta.getId(), Map.of(
+                "motivoCatalogo", motivoCatalogo.name(),
+                "justificacion", justificacion));
 
-        log.info("Acta {} marcada ILEGIBLE por verificador {}", actaId, verificadorId);
+        log.info("Acta {} marcada ILEGIBLE por verificador {} (motivo: {})", actaId, verificadorId, motivoCatalogo);
         return ActaResponse.from(acta);
     }
 
