@@ -222,15 +222,9 @@ export async function logout(): Promise<void> {
 // ── Captura (doble ciego) ────────────────────────────────────────────────
 
 export async function obtenerSiguienteActa(): Promise<ActaResponse | null> {
-  try {
-    const { data } = await api.get<ActaResponse>('/capturas/siguiente')
-    return data
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 204) {
-      return null
-    }
-    throw error
-  }
+  // axios no lanza para 204 (es 2xx): sin acta pendiente, el body viene vacío, no null.
+  const { data, status } = await api.get<ActaResponse>('/capturas/siguiente')
+  return status === 204 ? null : data
 }
 
 export async function registrarCaptura(
@@ -249,29 +243,9 @@ export async function obtenerImagenActaUrl(actaId: number): Promise<string> {
 }
 
 // ── Digitalización ───────────────────────────────────────────────────────
-
-export async function calcularSha256(archivo: File): Promise<string> {
-  const buffer = await archivo.arrayBuffer()
-  const hash = await crypto.subtle.digest('SHA-256', buffer)
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-export async function subirActaDigitalizada(
-  casillaId: number,
-  tipoEleccion: TipoEleccion,
-  archivo: File,
-): Promise<ActaResponse> {
-  const hashSha256 = await calcularSha256(archivo)
-  const form = new FormData()
-  form.append('casillaId', String(casillaId))
-  form.append('tipoEleccion', tipoEleccion)
-  form.append('hashSha256', hashSha256)
-  form.append('imagen', archivo)
-  const { data } = await api.post<ActaResponse>('/digitalizacion', form)
-  return data
-}
+// No hay función web para subir actas: la digitalización (DFR R1) es cámara
+// obligatoria en tiempo real, exclusiva de la app Android. POST /digitalizacion
+// solo lo consume movil/ (ver ApiService.kt).
 
 // ── Verificación (mesa de deliberación) ─────────────────────────────────
 
@@ -421,15 +395,9 @@ export async function cambiarActivoPartido(id: number, activo: boolean): Promise
 // ── Publicación (consulta pública) ───────────────────────────────────────
 
 export async function obtenerUltimoCorte(tipoEleccion: TipoEleccion): Promise<CorteResponse | null> {
-  try {
-    const { data } = await api.get<CorteResponse>(`/publicacion/${tipoEleccion}/ultimo-corte`)
-    return data
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 204) {
-      return null
-    }
-    throw error
-  }
+  // axios no lanza para 204 (es 2xx): sin corte publicado, el body viene vacío, no null.
+  const { data, status } = await api.get<CorteResponse>(`/publicacion/${tipoEleccion}/ultimo-corte`)
+  return status === 204 ? null : data
 }
 
 export async function obtenerHistorialCortes(tipoEleccion: TipoEleccion): Promise<CorteResponse[]> {

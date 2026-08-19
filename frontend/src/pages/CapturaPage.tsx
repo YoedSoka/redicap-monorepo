@@ -77,15 +77,20 @@ export default function CapturaPage() {
   }, [acta])
 
   const claves = [...partidos.map((p) => p.siglas), ...CLAVES_ESPECIALES]
+  const camposVacios = claves.filter((clave) => (votos[clave] ?? '').trim() === '')
 
   const onSubmit = async () => {
     if (!acta) return
+    if (camposVacios.length > 0) {
+      setError('Captura el número de votos de cada partido (usa 0 si el acta lo registra en cero); no puedes dejar campos en blanco.')
+      return
+    }
     setError(null)
     setCargando(true)
     try {
       const votosNumericos: Record<string, number> = {}
       for (const clave of claves) {
-        votosNumericos[clave] = Number(votos[clave]) || 0
+        votosNumericos[clave] = Number(votos[clave])
       }
       const actualizada = await registrarCaptura(
         acta.id,
@@ -186,7 +191,9 @@ export default function CapturaPage() {
                   placeholder="Votos"
                   value={votos[p.siglas] ?? ''}
                   onChange={(e) => setVotos({ ...votos, [p.siglas]: e.target.value })}
-                  className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
+                  className={`w-28 rounded-lg border px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500 ${
+                    (votos[p.siglas] ?? '').trim() === '' ? 'border-impepac-magenta-300' : 'border-slate-300'
+                  }`}
                 />
               </div>
             ))}
@@ -201,7 +208,9 @@ export default function CapturaPage() {
                     placeholder="Votos"
                     value={votos[clave] ?? ''}
                     onChange={(e) => setVotos({ ...votos, [clave]: e.target.value })}
-                    className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500"
+                    className={`w-28 rounded-lg border px-3 py-2 text-sm outline-none focus:border-impepac-magenta-500 ${
+                      (votos[clave] ?? '').trim() === '' ? 'border-impepac-magenta-300' : 'border-slate-300'
+                    }`}
                   />
                 </div>
               ))}
@@ -221,10 +230,17 @@ export default function CapturaPage() {
             />
           </div>
 
+          {camposVacios.length > 0 && (
+            <p className="mt-4 text-xs text-impepac-magenta-600">
+              Faltan {camposVacios.length} campo(s) de votos por llenar. Escribe 0 si el acta registra cero
+              votos para ese partido; no se puede enviar la captura con campos en blanco.
+            </p>
+          )}
+
           <button
             type="button"
             onClick={onSubmit}
-            disabled={cargando}
+            disabled={cargando || camposVacios.length > 0}
             className="mt-6 w-full rounded-lg bg-impepac-magenta-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-impepac-magenta-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cargando ? 'Guardando…' : 'Guardar captura'}

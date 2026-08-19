@@ -12,8 +12,6 @@ export function rutaPorRol(rol: string): string {
   switch (rol) {
     case 'CAPTURISTA':
       return '/captura'
-    case 'DIGITALIZADOR':
-      return '/digitalizacion'
     case 'VERIFICADOR':
       return '/verificacion'
     case 'ADMINISTRADOR':

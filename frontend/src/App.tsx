@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import CapturaPage from './pages/CapturaPage'
-import DigitalizacionPage from './pages/DigitalizacionPage'
 import VerificacionPage from './pages/VerificacionPage'
 import AdminUsuariosPage from './pages/AdminUsuariosPage'
 import AdminPartidosPage from './pages/AdminPartidosPage'
@@ -19,14 +18,6 @@ function App() {
         element={
           <RutaProtegida rolesPermitidos={['CAPTURISTA']}>
             <CapturaPage />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/digitalizacion"
-        element={
-          <RutaProtegida rolesPermitidos={['DIGITALIZADOR']}>
-            <DigitalizacionPage />
           </RutaProtegida>
         }
       />
